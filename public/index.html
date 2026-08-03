@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Generator plików z XML</title>
+    <link rel="stylesheet" href="/styles.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <p class="eyebrow">Generator oferty</p>
+        <h1>XML → XLSX, XLS, CSV</h1>
+        <p class="lead">Pobierz ofertę z adresu URL, sprawdź produkty i wyeksportuj wybrany zestaw danych.</p>
+      </header>
+      <section class="panel source-panel">
+        <div class="section-heading">
+          <div><p class="eyebrow">Źródło danych</p><h2>Adres pliku XML</h2></div>
+          <span id="source-status" class="status">Nie wczytano danych</span>
+        </div>
+        <div class="source-form">
+          <label for="xml-url">URL oferty</label>
+          <div class="url-row"><input id="xml-url" type="url" placeholder="https://example.com/oferta.xml" autocomplete="off"><button id="load-button" class="primary">Pobierz XML</button></div>
+          <p class="hint">Możesz użyć adresu domyślnego albo podać własny feed XML.</p>
+        </div>
+      </section>
+      <section id="results" class="hidden">
+        <div class="stats-grid">
+          <article class="stat-card"><span>Produktów</span><strong id="product-count">0</strong></article>
+          <article class="stat-card"><span>Widocznych</span><strong id="visible-count">0</strong></article>
+          <article class="stat-card"><span>Kategorii</span><strong id="category-count">0</strong></article>
+          <article class="stat-card"><span>Źródło</span><strong id="loaded-url" class="url-value">—</strong></article>
+        </div>
+        <section class="panel">
+          <div class="section-heading">
+            <div><p class="eyebrow">Podgląd</p><h2>Produkty w ofercie</h2></div>
+            <div class="export-actions"><label class="export-option"><input id="include-image-urls" type="checkbox" checked> Dołącz URL-e zdjęć</label><button id="csv-button">Eksport CSV</button><button id="xlsx-button" class="primary">Eksport XLSX</button><button id="xls-button">Eksport XLS</button></div>
+          </div>
+          <div class="filters">
+            <label>Wyszukaj <input id="search" type="search" placeholder="nazwa, kod produktu, EAN, MPN..."></label>
+            <div class="filter-builder">
+              <label>Znacznik XML <select id="filter-field"><option value="">Najpierw wczytaj XML</option></select></label>
+              <button id="add-filter-button" type="button">Dodaj filtr</button>
+              <button id="clear-filters-button" type="button" class="quiet">Wyczyść filtry</button>
+            </div>
+          </div>
+          <div id="active-filters" class="active-filters" aria-live="polite"></div>
+          <div id="selection-summary" class="selection-summary" aria-live="polite"></div>
+          <div class="table-wrap"><table><thead><tr><th><input id="select-visible" type="checkbox" aria-label="Zaznacz wszystkie widoczne produkty" title="Zaznacz wszystkie widoczne produkty"></th><th>Zdjęcie</th><th>ID</th><th>Kod produktu</th><th>Nazwa</th><th>Kategoria</th><th>Cena</th><th>Stan</th><th>EAN</th></tr></thead><tbody id="product-rows"></tbody></table></div>
+          <p id="table-note" class="hint"></p>
+        </section>
+      </section>
+    </main>
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
