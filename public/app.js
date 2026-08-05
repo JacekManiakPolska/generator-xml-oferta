@@ -1,9 +1,12 @@
 const state = { products: [], filtered: [], defaultUrl: '', loadedUrl: '', filterDefinitions: [], activeFilters: new Map(), selectedProducts: new Set() };
 const $ = (id) => document.getElementById(id);
 const elements = {
-  url: $('xml-url'), load: $('load-button'), status: $('source-status'), results: $('results'), productCount: $('product-count'), visibleCount: $('visible-count'), categoryCount: $('category-count'), loadedUrl: $('loaded-url'), search: $('search'), filterField: $('filter-field'), addFilter: $('add-filter-button'), clearFilters: $('clear-filters-button'), activeFilters: $('active-filters'), selectionSummary: $('selection-summary'), selectVisible: $('select-visible'), rows: $('product-rows'), note: $('table-note'), includeImageUrls: $('include-image-urls'), csv: $('csv-button'), xlsx: $('xlsx-button'), xls: $('xls-button')
+  url: $('xml-url'), load: $('load-button'), status: $('source-status'), results: $('results'), productCount: $('product-count'), visibleCount: $('visible-count'), categoryCount: $('category-count'), loadedUrl: $('loaded-url'), search: $('search'), filterField: $('filter-field'), addFilter: $('add-filter-button'), clearFilters: $('clear-filters-button'), activeFilters: $('active-filters'), selectionSummary: $('selection-summary'), selectVisible: $('select-visible'), rows: $('product-rows'), note: $('table-note'), includeImageUrls: $('include-image-urls'), csv: $('csv-button'), xlsx: $('xlsx-button'), xls: $('xls-button'), googleSheets: $('google-sheets-button')
 };
 const SELECT_FILTER_LIMIT = 150;
+const numberFormatter = new Intl.NumberFormat('pl-PL');
+const counterAnimations = new WeakMap();
+let googleClientId = '';
 
 function text(node) { return node?.textContent?.trim() || ''; }
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character])); }
@@ -16,6 +19,23 @@ function parseProduct(node) {
   return { key: url || id, id, url, price: node.getAttribute('price') || '', avail: node.getAttribute('avail') || '', stock: node.getAttribute('stock') || '', weight: node.getAttribute('weight') || '', category: text(node.querySelector(':scope > cat')), name: text(node.querySelector(':scope > name')), description: node.querySelector(':scope > desc')?.textContent || '', images, attributes };
 }
 function setStatus(message, type = '') { elements.status.textContent = message; elements.status.className = `status ${type}`; }
+function animateCounter(element, target, duration = 1000) {
+  if (!element) return;
+  const activeAnimation = counterAnimations.get(element);
+  if (activeAnimation) cancelAnimationFrame(activeAnimation);
+  const finalValue = Math.max(0, Number(target) || 0);
+  let startedAt = null;
+  element.textContent = '0';
+  function update(now) {
+    if (startedAt === null) startedAt = now;
+    const progress = Math.min((now - startedAt) / duration, 1);
+    const easedProgress = 1 - Math.pow(1 - progress, 3);
+    element.textContent = numberFormatter.format(Math.round(finalValue * easedProgress));
+    if (progress < 1) counterAnimations.set(element, requestAnimationFrame(update));
+    else counterAnimations.delete(element);
+  }
+  counterAnimations.set(element, requestAnimationFrame(update));
+}
 function parseXml(xmlText) {
   const xml = new DOMParser().parseFromString(xmlText, 'application/xml');
   if (xml.querySelector('parsererror')) throw new Error('Pobrany plik nie jest poprawnym XML-em.');
@@ -134,6 +154,62 @@ function exportFile(type) {
   const rows = exportRows(productsToExport); const workbook = XLSX.utils.book_new(); const sheet = XLSX.utils.json_to_sheet(rows); addHyperlinks(sheet); XLSX.utils.book_append_sheet(workbook, sheet, 'Oferta'); const stamp = new Date().toISOString().replace(/[T:.Z]/g, '-').replace(/-+$/, '');
   if (type === 'csv') { const csv = XLSX.utils.sheet_to_csv(sheet, { FS: ';' }); downloadBlob(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }), `oferta-podglad-demo-${stamp}.csv`); } else XLSX.writeFile(workbook, `oferta-podglad-demo-${stamp}.${type}`, { bookType: type });
 }
+function productsForExport() {
+  return state.selectedProducts.size ? state.products.filter((item) => state.selectedProducts.has(item.key)) : state.filtered;
+}
+async function googleApiRequest(url, accessToken, options = {}) {
+  const response = await fetch(url, { ...options, headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', ...(options.headers || {}) } });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload?.error?.message || `Google API zwróciło HTTP ${response.status}.`);
+  return payload;
+}
+async function createGoogleSheet(accessToken, products) {
+  const rows = exportRows(products);
+  const headers = Object.keys(rows[0]);
+  const values = [headers, ...rows.map((row) => headers.map((header) => row[header] ?? ''))];
+  const stamp = new Date().toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }).replace(/[/:]/g, '-');
+  const spreadsheet = await googleApiRequest('https://sheets.googleapis.com/v4/spreadsheets', accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ properties: { title: `Oferta XML ${stamp}`, locale: 'pl_PL' }, sheets: [{ properties: { title: 'Oferta', gridProperties: { frozenRowCount: 1 } } }] })
+  });
+  const range = encodeURIComponent("'Oferta'!A1");
+  await googleApiRequest(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheet.spreadsheetId}/values/${range}?valueInputOption=RAW`, accessToken, {
+    method: 'PUT', body: JSON.stringify({ range: "'Oferta'!A1", majorDimension: 'ROWS', values })
+  });
+  await googleApiRequest(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheet.spreadsheetId}:batchUpdate`, accessToken, {
+    method: 'POST',
+    body: JSON.stringify({ requests: [
+      { repeatCell: { range: { sheetId: 0, startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { backgroundColor: { red: .16, green: .13, blue: .43 }, textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true } } }, fields: 'userEnteredFormat(backgroundColor,textFormat)' } },
+      { setBasicFilter: { filter: { range: { sheetId: 0, startRowIndex: 0, endRowIndex: values.length, endColumnIndex: headers.length } } } },
+      { autoResizeDimensions: { dimensions: { sheetId: 0, dimension: 'COLUMNS', startIndex: 0, endIndex: headers.length } } }
+    ] })
+  });
+  return spreadsheet.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${spreadsheet.spreadsheetId}/edit`;
+}
+function exportToGoogleSheets() {
+  const products = productsForExport();
+  if (!products.length) return setStatus('Brak danych do eksportu', 'error');
+  if (!googleClientId) return setStatus('Arkusze Google wymagają skonfigurowania identyfikatora OAuth.', 'error');
+  if (!window.google?.accounts?.oauth2) return setStatus('Biblioteka logowania Google nie jest jeszcze gotowa. Spróbuj ponownie.', 'error');
+  const sheetTab = window.open('', '_blank');
+  if (sheetTab) sheetTab.document.title = 'Tworzenie Arkusza Google…';
+  const tokenClient = window.google.accounts.oauth2.initTokenClient({
+    client_id: googleClientId,
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    callback: async (tokenResponse) => {
+      if (tokenResponse.error || !tokenResponse.access_token) { sheetTab?.close(); return setStatus('Logowanie Google zostało anulowane.', 'error'); }
+      elements.googleSheets.disabled = true; setStatus('Tworzenie Arkusza Google…', 'loading');
+      try {
+        const spreadsheetUrl = await createGoogleSheet(tokenResponse.access_token, products);
+        if (sheetTab) sheetTab.location.href = spreadsheetUrl; else window.open(spreadsheetUrl, '_blank', 'noopener');
+        setStatus(`Utworzono Arkusz Google dla ${products.length.toLocaleString('pl-PL')} produktów`, 'success');
+      } catch (error) { sheetTab?.close(); setStatus(error.message || 'Nie udało się utworzyć Arkusza Google.', 'error'); }
+      finally { elements.googleSheets.disabled = false; }
+    },
+    error_callback: () => { sheetTab?.close(); setStatus('Nie udało się otworzyć logowania Google.', 'error'); }
+  });
+  tokenClient.requestAccessToken({ prompt: 'consent' });
+}
 async function loadXml() {
   const url = elements.url.value.trim(); if (!url) return setStatus('Podaj adres XML', 'error');
   elements.load.disabled = true; setStatus('Pobieranie i analiza…', 'loading');
@@ -145,7 +221,10 @@ async function loadXml() {
     const xmlText = payload ? payload.text : await response.text();
     const finalUrl = payload?.finalUrl || response.headers.get('x-source-url') || url;
     state.products = parseXml(xmlText); state.filtered = state.products; state.loadedUrl = finalUrl; state.filterDefinitions = buildFilterDefinitions(state.products); state.activeFilters.clear(); state.selectedProducts.clear();
-    elements.productCount.textContent = state.products.length.toLocaleString('pl-PL'); elements.categoryCount.textContent = uniqueCategories(state.products).length.toLocaleString('pl-PL'); elements.loadedUrl.textContent = new URL(state.loadedUrl).hostname; elements.results.classList.remove('hidden'); renderFilterFieldOptions(); renderActiveFilters(); applyFilters(); setStatus(`Wczytano ${state.products.length.toLocaleString('pl-PL')} produktów`, 'success');
+    const categoryCount = uniqueCategories(state.products).length;
+    elements.loadedUrl.textContent = new URL(state.loadedUrl).hostname; elements.results.classList.remove('hidden'); renderFilterFieldOptions(); renderActiveFilters(); applyFilters();
+    animateCounter(elements.productCount, state.products.length); animateCounter(elements.visibleCount, state.filtered.length); animateCounter(elements.categoryCount, categoryCount);
+    setStatus(`Wczytano ${state.products.length.toLocaleString('pl-PL')} produktów`, 'success');
   } catch (error) { setStatus(error.message || 'Wystąpił błąd', 'error'); } finally { elements.load.disabled = false; }
 }
 elements.load.addEventListener('click', loadXml);
@@ -162,4 +241,5 @@ elements.selectionSummary.addEventListener('click', (event) => { if (!event.targ
 elements.csv.addEventListener('click', () => exportFile('csv'));
 elements.xlsx.addEventListener('click', () => exportFile('xlsx'));
 elements.xls.addEventListener('click', () => exportFile('xls'));
-fetch('/api/config').then((response) => response.json()).then((config) => { state.defaultUrl = config.defaultUrl; elements.url.value = config.defaultUrl; }).catch(() => { elements.url.value = 'https://b2b.netinet.pl/xmlg/22lxnanobig.xml'; });
+elements.googleSheets.addEventListener('click', exportToGoogleSheets);
+fetch('/api/config').then((response) => response.json()).then((config) => { state.defaultUrl = config.defaultUrl; googleClientId = config.googleClientId || ''; elements.url.value = config.defaultUrl; if (!googleClientId) elements.googleSheets.title = 'Wymaga konfiguracji Google OAuth'; }).catch(() => { elements.url.value = 'https://b2b.netinet.pl/xmlg/22lxnanobig.xml'; });

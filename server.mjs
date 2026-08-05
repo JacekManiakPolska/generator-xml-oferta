@@ -10,6 +10,7 @@ const DEFAULT_XML_URL = "https://b2b.netinet.pl/xmlg/22lxnanobig.xml";
 const NETINET_ORIGIN = "https://b2b.netinet.pl";
 const NETINET_DEMO_EMAIL = process.env.NETINET_DEMO_EMAIL;
 const NETINET_DEMO_PASSWORD = process.env.NETINET_DEMO_PASSWORD;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const MAX_XML_BYTES = 50 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -159,7 +160,7 @@ async function serveStatic(res, pathname) {
 const server = http.createServer(async (req, res) => {
   try {
     const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
-    if (requestUrl.pathname === "/api/config") return send(res, 200, JSON.stringify({ defaultUrl: DEFAULT_XML_URL }), "application/json; charset=utf-8");
+    if (requestUrl.pathname === "/api/config") return send(res, 200, JSON.stringify({ defaultUrl: DEFAULT_XML_URL, googleClientId: GOOGLE_CLIENT_ID }), "application/json; charset=utf-8");
     if (requestUrl.pathname === "/api/fetch-xml") {
       const source = requestUrl.searchParams.get("url") || DEFAULT_XML_URL;
       return send(res, 200, JSON.stringify(await fetchXml(source)), "application/json; charset=utf-8");

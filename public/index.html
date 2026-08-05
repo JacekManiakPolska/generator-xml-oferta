@@ -4,8 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Generator plików z XML</title>
-    <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/styles.css?v=20260805-4">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
     <main class="shell">
@@ -21,7 +22,10 @@
         </div>
         <div class="source-form">
           <label for="xml-url">URL oferty</label>
-          <div class="url-row"><input id="xml-url" type="url" placeholder="https://example.com/oferta.xml" autocomplete="off"><button id="load-button" class="primary">Pobierz XML</button></div>
+          <div class="url-row">
+            <input id="xml-url" type="url" placeholder="https://example.com/oferta.xml" autocomplete="off">
+            <button id="load-button" class="button button-load" type="button"><span>Pobierz XML</span><span class="button-icon" aria-hidden="true">→</span></button>
+          </div>
           <p class="hint">Możesz użyć adresu domyślnego albo podać własny feed XML.</p>
         </div>
       </section>
@@ -35,14 +39,23 @@
         <section class="panel">
           <div class="section-heading">
             <div><p class="eyebrow">Podgląd</p><h2>Produkty w ofercie</h2></div>
-            <div class="export-actions"><label class="export-option"><input id="include-image-urls" type="checkbox" checked> Dołącz URL-e zdjęć</label><button id="csv-button">Eksport CSV</button><button id="xlsx-button" class="primary">Eksport XLSX</button><button id="xls-button">Eksport XLS</button></div>
+            <fieldset class="export-actions">
+              <legend>Eksport danych</legend>
+              <label class="export-option"><input id="include-image-urls" type="checkbox" checked> Dołącz URL-e zdjęć</label>
+              <div class="export-button-group" role="group" aria-label="Format eksportu">
+                <button id="csv-button" class="button button-export" type="button"><span>CSV</span><span class="format-mark" aria-hidden="true">.csv</span></button>
+                <button id="xlsx-button" class="button button-export" type="button"><span>XLSX</span><span class="format-mark" aria-hidden="true">.xlsx</span></button>
+                <button id="xls-button" class="button button-export" type="button"><span>XLS</span><span class="format-mark" aria-hidden="true">.xls</span></button>
+                <button id="google-sheets-button" class="button button-export button-google" type="button"><span>Google</span><span class="format-mark" aria-hidden="true">Sheets</span></button>
+              </div>
+            </fieldset>
           </div>
           <div class="filters">
             <label>Wyszukaj <input id="search" type="search" placeholder="nazwa, kod produktu, EAN, MPN..."></label>
             <div class="filter-builder">
               <label>Znacznik XML <select id="filter-field"><option value="">Najpierw wczytaj XML</option></select></label>
-              <button id="add-filter-button" type="button">Dodaj filtr</button>
-              <button id="clear-filters-button" type="button" class="quiet">Wyczyść filtry</button>
+              <button id="add-filter-button" type="button" class="button button-filter-add"><span aria-hidden="true">＋</span> Dodaj filtr</button>
+              <button id="clear-filters-button" type="button" class="button button-text quiet">Wyczyść filtry <span aria-hidden="true">↗</span></button>
             </div>
           </div>
           <div id="active-filters" class="active-filters" aria-live="polite"></div>
@@ -52,6 +65,6 @@
         </section>
       </section>
     </main>
-    <script type="module" src="/app.js"></script>
+    <script type="module" src="/app.js?v=20260805-4"></script>
   </body>
 </html>

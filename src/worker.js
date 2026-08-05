@@ -108,7 +108,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     try {
-      if (url.pathname === "/api/config") return json({ defaultUrl: env.DEFAULT_XML_URL || DEFAULT_XML_URL });
+      if (url.pathname === "/api/config") return json({ defaultUrl: env.DEFAULT_XML_URL || DEFAULT_XML_URL, googleClientId: env.GOOGLE_CLIENT_ID || "" });
       if (url.pathname === "/api/fetch-xml") return fetchXml(url.searchParams.get("url") || env.DEFAULT_XML_URL || DEFAULT_XML_URL);
       if (url.pathname === "/product-preview") return new Response(await fetchProductPreview(url.searchParams.get("target") || "", env), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" } });
       return env.ASSETS.fetch(request);
