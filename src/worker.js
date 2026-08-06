@@ -1,5 +1,7 @@
 const DEFAULT_XML_URL = "https://b2b.netinet.pl/xmlg/22lxnanobig.xml";
 const NETINET_ORIGIN = "https://b2b.netinet.pl";
+const NETINET_DEMO_EMAIL = "demo@netinet.pl";
+const NETINET_DEMO_PASSWORD = "b2bdemo";
 const MAX_XML_BYTES = 50 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
 
@@ -84,6 +86,13 @@ function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
 }
 
+function createProductOpenPage(value) {
+  const target = getProductUrl(value);
+  const back = `${target.pathname}${target.search}${target.hash}`;
+  const loginUrl = `${NETINET_ORIGIN}/logowanie?back=${encodeURIComponent(back)}`;
+  return `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Otwieranie produktu…</title></head><body><p>Logowanie do publicznej oferty demonstracyjnej Netinet…</p><form id="demo-login" action="${escapeHtml(loginUrl)}" method="post"><input type="hidden" name="email" value="${escapeHtml(NETINET_DEMO_EMAIL)}"><input type="hidden" name="password" value="${escapeHtml(NETINET_DEMO_PASSWORD)}"><input type="hidden" name="submitLogin" value="1"><input type="hidden" name="back" value="${escapeHtml(back)}"><noscript><button type="submit">Zaloguj i otwórz produkt</button></noscript></form><script>document.getElementById('demo-login').submit();</script></body></html>`;
+}
+
 function prepareProductPreview(html) {
   const withoutScripts = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "").replace(/<base\b[^>]*>/gi, "");
   const base = `<base href="${NETINET_ORIGIN}/">`;
@@ -110,6 +119,7 @@ export default {
     try {
       if (url.pathname === "/api/config") return json({ defaultUrl: env.DEFAULT_XML_URL || DEFAULT_XML_URL, googleClientId: env.GOOGLE_CLIENT_ID || "" });
       if (url.pathname === "/api/fetch-xml") return fetchXml(url.searchParams.get("url") || env.DEFAULT_XML_URL || DEFAULT_XML_URL);
+      if (url.pathname === "/open-product") return new Response(createProductOpenPage(url.searchParams.get("target") || ""), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" } });
       if (url.pathname === "/product-preview") return new Response(await fetchProductPreview(url.searchParams.get("target") || "", env), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" } });
       return env.ASSETS.fetch(request);
     } catch (error) {

@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 const PORT = Number(process.env.PORT || 3000);
 const DEFAULT_XML_URL = "https://b2b.netinet.pl/xmlg/22lxnanobig.xml";
 const NETINET_ORIGIN = "https://b2b.netinet.pl";
-const NETINET_DEMO_EMAIL = process.env.NETINET_DEMO_EMAIL;
-const NETINET_DEMO_PASSWORD = process.env.NETINET_DEMO_PASSWORD;
+const NETINET_DEMO_EMAIL = process.env.NETINET_DEMO_EMAIL || "demo@netinet.pl";
+const NETINET_DEMO_PASSWORD = process.env.NETINET_DEMO_PASSWORD || "b2bdemo";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const MAX_XML_BYTES = 50 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
@@ -98,13 +98,10 @@ function assertDemoCredentials() {
 
 function createProductOpenPage(value) {
   assertDemoCredentials();
-  let target;
-  try { target = new URL(value); } catch { throw new Error("Nieprawidłowy adres produktu."); }
-  if (target.origin !== NETINET_ORIGIN) throw new Error("Można otwierać wyłącznie produkty z b2b.netinet.pl.");
+  const target = getProductUrl(value);
   const back = `${target.pathname}${target.search}${target.hash}`;
   const loginUrl = `${NETINET_ORIGIN}/logowanie?back=${encodeURIComponent(back)}`;
-  const productUrlJson = JSON.stringify(target.toString()).replace(/</g, "\\u003c");
-  return `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Otwieranie produktu…</title></head><body><p>Otwieranie produktu w ofercie Netinet…</p><iframe name="netinet-login" title="Logowanie do oferty" hidden></iframe><form id="demo-login" action="${escapeHtml(loginUrl)}" method="post" target="netinet-login"><input type="hidden" name="email" value="${escapeHtml(NETINET_DEMO_EMAIL)}"><input type="hidden" name="password" value="${escapeHtml(NETINET_DEMO_PASSWORD)}"><input type="hidden" name="submitLogin" value="1"><input type="hidden" name="back" value="${escapeHtml(back)}"></form><script>document.getElementById('demo-login').submit();window.setTimeout(function(){window.location.replace(${productUrlJson});},1800);</script></body></html>`;
+  return `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Otwieranie produktu…</title></head><body><p>Logowanie do publicznej oferty demonstracyjnej Netinet…</p><form id="demo-login" action="${escapeHtml(loginUrl)}" method="post"><input type="hidden" name="email" value="${escapeHtml(NETINET_DEMO_EMAIL)}"><input type="hidden" name="password" value="${escapeHtml(NETINET_DEMO_PASSWORD)}"><input type="hidden" name="submitLogin" value="1"><input type="hidden" name="back" value="${escapeHtml(back)}"><noscript><button type="submit">Zaloguj i otwórz produkt</button></noscript></form><script>document.getElementById('demo-login').submit();</script></body></html>`;
 }
 
 function getProductUrl(value) {

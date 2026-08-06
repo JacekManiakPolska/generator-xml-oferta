@@ -91,7 +91,7 @@ function clearFilters() {
 }
 function renderRows() {
   const rows = state.filtered.slice(0, 250);
-  elements.rows.innerHTML = rows.map((product) => `<tr><td><input class="row-select" type="checkbox" data-product-key="${escapeHtml(product.key)}" aria-label="Zaznacz produkt ${escapeHtml(product.name)}"${state.selectedProducts.has(product.key) ? ' checked' : ''}></td><td>${product.images[0] ? `<img class="thumb" loading="lazy" src="${escapeHtml(product.images[0])}" alt="">` : '<span class="muted">brak</span>'}</td><td>${escapeHtml(product.id)}</td><td>${escapeHtml(product.attributes['Kod Produktu'])}</td><td class="name-cell">${escapeHtml(product.name)}</td><td>${escapeHtml(product.category)}</td><td>${escapeHtml(product.price)}</td><td>${escapeHtml(product.stock)}</td><td>${escapeHtml(product.attributes.EAN)}</td></tr>`).join('');
+  elements.rows.innerHTML = rows.map((product) => `<tr><td><input class="row-select" type="checkbox" data-product-key="${escapeHtml(product.key)}" aria-label="Zaznacz produkt ${escapeHtml(product.name)}"${state.selectedProducts.has(product.key) ? ' checked' : ''}></td><td>${product.images[0] ? `<img class="thumb" loading="lazy" src="${escapeHtml(product.images[0])}" alt="">` : '<span class="muted">brak</span>'}</td><td>${escapeHtml(product.id)}</td><td>${escapeHtml(product.attributes['Kod Produktu'])}</td><td class="name-cell">${product.url ? `<a class="product-link" href="/open-product?target=${encodeURIComponent(product.url)}" target="_blank" rel="noopener" title="Zaloguj do konta demo i otwórz oryginalną kartę produktu">${escapeHtml(product.name)} <span aria-hidden="true">↗</span></a>` : escapeHtml(product.name)}</td><td>${escapeHtml(product.category)}</td><td>${escapeHtml(product.price)}</td><td>${escapeHtml(product.stock)}</td><td>${escapeHtml(product.attributes.EAN)}</td></tr>`).join('');
   elements.visibleCount.textContent = state.filtered.length.toLocaleString('pl-PL');
   elements.note.textContent = state.filtered.length > rows.length ? `Pokazano pierwsze ${rows.length} rekordów. Eksport obejmie wszystkie rekordy spełniające filtry.` : `${rows.length.toLocaleString('pl-PL')} rekordów spełnia aktualne filtry.`;
   updateSelectionUi(rows);
@@ -120,7 +120,7 @@ function applyFilters() {
 function exportRows(products) {
   const maxImages = elements.includeImageUrls.checked ? Math.max(0, ...products.map((item) => item.images.length)) : 0;
   return products.map((item) => {
-    const row = { ID: item.id, 'Kod produktu': item.attributes['Kod Produktu'] || '', EAN: item.attributes.EAN || '', MPN: item.attributes.MPN || '', Nazwa: item.name, Kategoria: item.category, Cena: Number(item.price) || item.price, Stan: Number(item.stock) || item.stock, Dostępność: item.avail, Waga: Number(item.weight) || item.weight, 'Otwórz produkt (demo)': `${window.location.origin}/product-preview?target=${encodeURIComponent(item.url)}`, 'URL produktu B2B': item.url, 'Liczba zdjęć': item.images.length, Producent: item.attributes.Producent || '', Marka: item.attributes.Marka || '', Jednostka: item.attributes.Jednostka || '' };
+    const row = { ID: item.id, 'Kod produktu': item.attributes['Kod Produktu'] || '', EAN: item.attributes.EAN || '', MPN: item.attributes.MPN || '', Nazwa: item.name, Kategoria: item.category, Cena: Number(item.price) || item.price, Stan: Number(item.stock) || item.stock, Dostępność: item.avail, Waga: Number(item.weight) || item.weight, 'Otwórz produkt (demo)': `${window.location.origin}/open-product?target=${encodeURIComponent(item.url)}`, 'URL produktu B2B': item.url, 'Liczba zdjęć': item.images.length, Producent: item.attributes.Producent || '', Marka: item.attributes.Marka || '', Jednostka: item.attributes.Jednostka || '' };
     for (let index = 0; index < maxImages; index += 1) row[`URL zdjęcia ${index + 1}`] = item.images[index] || '';
     return row;
   });
@@ -148,10 +148,31 @@ function addHyperlinks(sheet) {
     }
   }
 }
+function createInstructionsSheet() {
+  const rows = [
+    ['Jak otwierać produkty z oferty Netinet'],
+    [],
+    ['Kliknij link "Otwórz produkt" w arkuszu Oferta. Generator zaloguje Cię automatycznie do publicznego konta demonstracyjnego i otworzy oryginalną kartę produktu.'],
+    [],
+    ['Logowanie ręczne'],
+    ['Adres', 'https://b2b.netinet.pl'],
+    ['Login', 'demo@netinet.pl'],
+    ['Hasło', 'b2bdemo'],
+    [],
+    ['Jeżeli automatyczne wejście nie zadziała, otwórz powyższy adres, zaloguj się podanymi danymi i ponownie kliknij link produktu.']
+  ];
+  const sheet = XLSX.utils.aoa_to_sheet(rows);
+  sheet['!cols'] = [{ wch: 24 }, { wch: 72 }];
+  sheet['!merges'] = [XLSX.utils.decode_range('A1:B1'), XLSX.utils.decode_range('A3:B3'), XLSX.utils.decode_range('A5:B5'), XLSX.utils.decode_range('A10:B10')];
+  sheet.A6.l = { Target: 'https://b2b.netinet.pl', Tooltip: 'Otwórz stronę logowania Netinet' };
+  sheet.A6.v = 'Adres';
+  sheet.B6.l = { Target: 'https://b2b.netinet.pl', Tooltip: 'Otwórz stronę logowania Netinet' };
+  return sheet;
+}
 function exportFile(type) {
   const productsToExport = state.selectedProducts.size ? state.products.filter((item) => state.selectedProducts.has(item.key)) : state.filtered;
   if (!productsToExport.length) return setStatus('Brak danych do eksportu', 'error');
-  const rows = exportRows(productsToExport); const workbook = XLSX.utils.book_new(); const sheet = XLSX.utils.json_to_sheet(rows); addHyperlinks(sheet); XLSX.utils.book_append_sheet(workbook, sheet, 'Oferta'); const stamp = new Date().toISOString().replace(/[T:.Z]/g, '-').replace(/-+$/, '');
+  const rows = exportRows(productsToExport); const workbook = XLSX.utils.book_new(); const sheet = XLSX.utils.json_to_sheet(rows); addHyperlinks(sheet); if (type !== 'csv') XLSX.utils.book_append_sheet(workbook, createInstructionsSheet(), 'Jak otwierać produkty'); XLSX.utils.book_append_sheet(workbook, sheet, 'Oferta'); const stamp = new Date().toISOString().replace(/[T:.Z]/g, '-').replace(/-+$/, '');
   if (type === 'csv') { const csv = XLSX.utils.sheet_to_csv(sheet, { FS: ';' }); downloadBlob(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }), `oferta-podglad-demo-${stamp}.csv`); } else XLSX.writeFile(workbook, `oferta-podglad-demo-${stamp}.${type}`, { bookType: type });
 }
 function productsForExport() {
