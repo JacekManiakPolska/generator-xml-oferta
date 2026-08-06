@@ -88,8 +88,8 @@ function escapeHtml(value) {
 
 function createProductOpenPage(value) {
   const target = getProductUrl(value);
-  const back = `${target.pathname}${target.search}${target.hash}`;
-  const loginUrl = `${NETINET_ORIGIN}/logowanie?back=${encodeURIComponent(back)}`;
+  const back = target.toString();
+  const loginUrl = `${NETINET_ORIGIN}/logowanie`;
   return `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Otwieranie produktu…</title></head><body><p>Logowanie do publicznej oferty demonstracyjnej Netinet…</p><form id="demo-login" action="${escapeHtml(loginUrl)}" method="post"><input type="hidden" name="email" value="${escapeHtml(NETINET_DEMO_EMAIL)}"><input type="hidden" name="password" value="${escapeHtml(NETINET_DEMO_PASSWORD)}"><input type="hidden" name="submitLogin" value="1"><input type="hidden" name="back" value="${escapeHtml(back)}"><noscript><button type="submit">Zaloguj i otwórz produkt</button></noscript></form><script>document.getElementById('demo-login').submit();</script></body></html>`;
 }
 
@@ -117,7 +117,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     try {
-      if (url.pathname === "/api/config") return json({ defaultUrl: env.DEFAULT_XML_URL || DEFAULT_XML_URL, googleClientId: env.GOOGLE_CLIENT_ID || "" });
+      if (url.pathname === "/api/config") return json({ defaultUrl: env.DEFAULT_XML_URL || DEFAULT_XML_URL, googleClientId: env.GOOGLE_CLIENT_ID || "", publicAppUrl: env.PUBLIC_APP_URL || url.origin });
       if (url.pathname === "/api/fetch-xml") return fetchXml(url.searchParams.get("url") || env.DEFAULT_XML_URL || DEFAULT_XML_URL);
       if (url.pathname === "/open-product") return new Response(createProductOpenPage(url.searchParams.get("target") || ""), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" } });
       if (url.pathname === "/product-preview") return new Response(await fetchProductPreview(url.searchParams.get("target") || "", env), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" } });

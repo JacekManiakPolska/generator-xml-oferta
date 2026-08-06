@@ -1,7 +1,9 @@
-const state = { products: [], filtered: [], defaultUrl: '', loadedUrl: '', filterDefinitions: [], activeFilters: new Map(), selectedProducts: new Set() };
+import { buildPrintOfferHtml } from './print-offer.js';
+
+const state = { products: [], filtered: [], defaultUrl: '', loadedUrl: '', publicAppUrl: '', filterDefinitions: [], activeFilters: new Map(), selectedProducts: new Set() };
 const $ = (id) => document.getElementById(id);
 const elements = {
-  url: $('xml-url'), load: $('load-button'), status: $('source-status'), results: $('results'), productCount: $('product-count'), visibleCount: $('visible-count'), categoryCount: $('category-count'), loadedUrl: $('loaded-url'), search: $('search'), filterField: $('filter-field'), addFilter: $('add-filter-button'), clearFilters: $('clear-filters-button'), activeFilters: $('active-filters'), selectionSummary: $('selection-summary'), selectVisible: $('select-visible'), rows: $('product-rows'), note: $('table-note'), includeImageUrls: $('include-image-urls'), csv: $('csv-button'), xlsx: $('xlsx-button'), xls: $('xls-button'), googleSheets: $('google-sheets-button')
+  url: $('xml-url'), load: $('load-button'), status: $('source-status'), results: $('results'), productCount: $('product-count'), visibleCount: $('visible-count'), categoryCount: $('category-count'), loadedUrl: $('loaded-url'), search: $('search'), filterField: $('filter-field'), addFilter: $('add-filter-button'), clearFilters: $('clear-filters-button'), activeFilters: $('active-filters'), selectionSummary: $('selection-summary'), selectVisible: $('select-visible'), rows: $('product-rows'), note: $('table-note'), includeImageUrls: $('include-image-urls'), csv: $('csv-button'), xlsx: $('xlsx-button'), xls: $('xls-button'), pdf: $('pdf-button'), googleSheets: $('google-sheets-button')
 };
 const SELECT_FILTER_LIMIT = 150;
 const numberFormatter = new Intl.NumberFormat('pl-PL');
@@ -117,10 +119,15 @@ function applyFilters() {
   });
   renderRows();
 }
+function productOpenUrl(productUrl) {
+  if (!productUrl) return '';
+  const base = (state.publicAppUrl || window.location.origin).replace(/\/$/, '');
+  return `${base}/open-product?target=${encodeURIComponent(productUrl)}`;
+}
 function exportRows(products) {
   const maxImages = elements.includeImageUrls.checked ? Math.max(0, ...products.map((item) => item.images.length)) : 0;
   return products.map((item) => {
-    const row = { ID: item.id, 'Kod produktu': item.attributes['Kod Produktu'] || '', EAN: item.attributes.EAN || '', MPN: item.attributes.MPN || '', Nazwa: item.name, Kategoria: item.category, Cena: Number(item.price) || item.price, Stan: Number(item.stock) || item.stock, Dostępność: item.avail, Waga: Number(item.weight) || item.weight, 'Otwórz produkt (demo)': `${window.location.origin}/open-product?target=${encodeURIComponent(item.url)}`, 'URL produktu B2B': item.url, 'Liczba zdjęć': item.images.length, Producent: item.attributes.Producent || '', Marka: item.attributes.Marka || '', Jednostka: item.attributes.Jednostka || '' };
+    const row = { ID: item.id, 'Kod produktu': item.attributes['Kod Produktu'] || '', EAN: item.attributes.EAN || '', MPN: item.attributes.MPN || '', Nazwa: item.name, Kategoria: item.category, Cena: Number(item.price) || item.price, Stan: Number(item.stock) || item.stock, Dostępność: item.avail, Waga: Number(item.weight) || item.weight, 'Otwórz produkt (demo)': productOpenUrl(item.url), 'URL produktu B2B': item.url, 'Liczba zdjęć': item.images.length, Producent: item.attributes.Producent || '', Marka: item.attributes.Marka || '', Jednostka: item.attributes.Jednostka || '' };
     for (let index = 0; index < maxImages; index += 1) row[`URL zdjęcia ${index + 1}`] = item.images[index] || '';
     return row;
   });
@@ -177,6 +184,38 @@ function exportFile(type) {
 }
 function productsForExport() {
   return state.selectedProducts.size ? state.products.filter((item) => state.selectedProducts.has(item.key)) : state.filtered;
+}
+async function printOffer() {
+  const products = productsForExport();
+  if (!products.length) return setStatus('Brak danych do wydruku', 'error');
+  const printTab = window.open('', '_blank');
+  if (!printTab) return setStatus('Przeglądarka zablokowała okno wydruku. Zezwól na wyskakujące okna i spróbuj ponownie.', 'error');
+  printTab.opener = null;
+  printTab.document.open();
+  printTab.document.write(buildPrintOfferHtml({ products, publicAppUrl: state.publicAppUrl || window.location.origin, sourceUrl: state.loadedUrl || state.defaultUrl }));
+  printTab.document.close();
+  const triggerPrint = () => { if (!printTab.closed) { printTab.focus(); printTab.print(); } };
+  printTab.document.getElementById('print-now')?.addEventListener('click', triggerPrint);
+  const images = [...printTab.document.images];
+  const settleImage = (image) => new Promise((resolve) => {
+    const showFallback = () => {
+      const fallback = printTab.document.createElement('span');
+      fallback.className = 'no-image';
+      fallback.textContent = 'brak';
+      image.replaceWith(fallback);
+      resolve();
+    };
+    if (image.complete) return image.naturalWidth ? resolve() : showFallback();
+    image.addEventListener('load', resolve, { once: true });
+    image.addEventListener('error', showFallback, { once: true });
+  });
+  await Promise.race([
+    Promise.all(images.map(settleImage)),
+    new Promise((resolve) => setTimeout(resolve, 5000))
+  ]);
+  if (printTab.document.fonts?.ready) await printTab.document.fonts.ready;
+  setStatus(`Przygotowano widok PDF dla ${products.length.toLocaleString('pl-PL')} produktów`, 'success');
+  triggerPrint();
 }
 async function googleApiRequest(url, accessToken, options = {}) {
   const response = await fetch(url, { ...options, headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', ...(options.headers || {}) } });
@@ -262,5 +301,6 @@ elements.selectionSummary.addEventListener('click', (event) => { if (!event.targ
 elements.csv.addEventListener('click', () => exportFile('csv'));
 elements.xlsx.addEventListener('click', () => exportFile('xlsx'));
 elements.xls.addEventListener('click', () => exportFile('xls'));
+elements.pdf.addEventListener('click', printOffer);
 elements.googleSheets.addEventListener('click', exportToGoogleSheets);
-fetch('/api/config').then((response) => response.json()).then((config) => { state.defaultUrl = config.defaultUrl; googleClientId = config.googleClientId || ''; elements.url.value = config.defaultUrl; if (!googleClientId) elements.googleSheets.title = 'Wymaga konfiguracji Google OAuth'; }).catch(() => { elements.url.value = 'https://b2b.netinet.pl/xmlg/22lxnanobig.xml'; });
+fetch('/api/config').then((response) => response.json()).then((config) => { state.defaultUrl = config.defaultUrl; state.publicAppUrl = config.publicAppUrl || window.location.origin; googleClientId = config.googleClientId || ''; elements.url.value = config.defaultUrl; if (!googleClientId) elements.googleSheets.title = 'Wymaga konfiguracji Google OAuth'; }).catch(() => { state.publicAppUrl = window.location.origin; elements.url.value = 'https://b2b.netinet.pl/xmlg/22lxnanobig.xml'; });
