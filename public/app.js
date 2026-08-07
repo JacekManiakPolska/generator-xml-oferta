@@ -1,14 +1,14 @@
 import { buildPrintOfferHtml } from './print-offer.js';
+import { productMatchesSearch } from './product-search.js';
 
 const state = { products: [], filtered: [], defaultUrl: '', loadedUrl: '', publicAppUrl: '', filterDefinitions: [], activeFilters: new Map(), selectedProducts: new Set() };
 const $ = (id) => document.getElementById(id);
 const elements = {
-  url: $('xml-url'), load: $('load-button'), status: $('source-status'), results: $('results'), productCount: $('product-count'), visibleCount: $('visible-count'), categoryCount: $('category-count'), loadedUrl: $('loaded-url'), search: $('search'), filterField: $('filter-field'), addFilter: $('add-filter-button'), clearFilters: $('clear-filters-button'), activeFilters: $('active-filters'), selectionSummary: $('selection-summary'), selectVisible: $('select-visible'), rows: $('product-rows'), note: $('table-note'), includeImageUrls: $('include-image-urls'), csv: $('csv-button'), xlsx: $('xlsx-button'), xls: $('xls-button'), pdf: $('pdf-button'), googleSheets: $('google-sheets-button')
+  url: $('xml-url'), load: $('load-button'), status: $('source-status'), results: $('results'), productCount: $('product-count'), visibleCount: $('visible-count'), categoryCount: $('category-count'), loadedUrl: $('loaded-url'), search: $('search'), filterField: $('filter-field'), addFilter: $('add-filter-button'), clearFilters: $('clear-filters-button'), activeFilters: $('active-filters'), selectionSummary: $('selection-summary'), selectVisible: $('select-visible'), rows: $('product-rows'), note: $('table-note'), includeImageUrls: $('include-image-urls'), xlsx: $('xlsx-button'), xls: $('xls-button'), pdf: $('pdf-button')
 };
 const SELECT_FILTER_LIMIT = 150;
 const numberFormatter = new Intl.NumberFormat('pl-PL');
 const counterAnimations = new WeakMap();
-let googleClientId = '';
 
 function text(node) { return node?.textContent?.trim() || ''; }
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character])); }
@@ -56,10 +56,18 @@ function buildFilterDefinitions(products) {
   return definitions;
 }
 function getFilterDefinition(key) { return state.filterDefinitions.find((definition) => definition.key === key); }
+function updateAddFilterButton() {
+  const hasSelection = Boolean(elements.filterField.value);
+  const label = elements.addFilter.querySelector('[data-add-filter-label]');
+  elements.addFilter.disabled = !hasSelection;
+  elements.addFilter.classList.toggle('is-ready', hasSelection);
+  elements.addFilter.title = hasSelection ? 'Kliknij, aby dodać wybrany filtr do listy' : 'Najpierw wybierz znacznik XML';
+  if (label) label.textContent = hasSelection ? 'Dodaj wybrany filtr' : 'Wybierz znacznik';
+}
 function renderFilterFieldOptions() {
   const available = state.filterDefinitions.filter((definition) => !state.activeFilters.has(definition.key));
   elements.filterField.innerHTML = '<option value="">Wybierz znacznik XML</option>' + available.map((definition) => `<option value="${escapeHtml(definition.key)}">${escapeHtml(definition.label)} · ${escapeHtml(definition.path)} (${definition.values.length})</option>`).join('');
-  elements.addFilter.disabled = !available.length;
+  updateAddFilterButton();
 }
 function renderActiveFilters() {
   if (!state.activeFilters.size) {
@@ -91,6 +99,12 @@ function clearFilters() {
   renderActiveFilters();
   applyFilters();
 }
+function updateClearFiltersButton() {
+  const hasFilters = state.activeFilters.size > 0 || Boolean(elements.search.value.trim());
+  elements.clearFilters.disabled = !hasFilters;
+  elements.clearFilters.classList.toggle('is-active', hasFilters);
+  elements.clearFilters.title = hasFilters ? 'Usuń wyszukiwanie i wszystkie aktywne filtry' : 'Brak aktywnych filtrów';
+}
 function renderRows() {
   const rows = state.filtered.slice(0, 250);
   elements.rows.innerHTML = rows.map((product) => `<tr><td><input class="row-select" type="checkbox" data-product-key="${escapeHtml(product.key)}" aria-label="Zaznacz produkt ${escapeHtml(product.name)}"${state.selectedProducts.has(product.key) ? ' checked' : ''}></td><td>${product.images[0] ? `<img class="thumb" loading="lazy" src="${escapeHtml(product.images[0])}" alt="">` : '<span class="muted">brak</span>'}</td><td>${escapeHtml(product.id)}</td><td>${escapeHtml(product.attributes['Kod Produktu'])}</td><td class="name-cell">${product.url ? `<a class="product-link" href="/open-product?target=${encodeURIComponent(product.url)}" target="_blank" rel="noopener" title="Zaloguj do konta demo i otwórz oryginalną kartę produktu">${escapeHtml(product.name)} <span aria-hidden="true">↗</span></a>` : escapeHtml(product.name)}</td><td>${escapeHtml(product.category)}</td><td>${escapeHtml(product.price)}</td><td>${escapeHtml(product.stock)}</td><td>${escapeHtml(product.attributes.EAN)}</td></tr>`).join('');
@@ -106,10 +120,9 @@ function updateSelectionUi(visibleRows = state.filtered.slice(0, 250)) {
   elements.selectVisible.indeterminate = visibleSelected > 0 && visibleSelected < visibleRows.length;
 }
 function applyFilters() {
-  const query = elements.search.value.trim().toLocaleLowerCase('pl-PL');
   const activeFilters = [...state.activeFilters.entries()].filter(([, value]) => value);
   state.filtered = state.products.filter((item) => {
-    if (query && ![item.id, item.name, item.category, item.url, ...Object.values(item.attributes)].join(' ').toLocaleLowerCase('pl-PL').includes(query)) return false;
+    if (!productMatchesSearch(item, elements.search.value)) return false;
     return activeFilters.every(([key, selectedValue]) => {
       const value = valueForFilter(item, key);
       if (selectedValue === '__missing__') return !value;
@@ -117,6 +130,7 @@ function applyFilters() {
       return definition?.values.length > SELECT_FILTER_LIMIT ? value.toLocaleLowerCase('pl-PL').includes(selectedValue.toLocaleLowerCase('pl-PL')) : value === selectedValue;
     });
   });
+  updateClearFiltersButton();
   renderRows();
 }
 function productOpenUrl(productUrl) {
@@ -132,7 +146,6 @@ function exportRows(products) {
     return row;
   });
 }
-function downloadBlob(blob, filename) { const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
 function addHyperlinks(sheet) {
   const range = XLSX.utils.decode_range(sheet['!ref']);
   const headers = new Map();
@@ -179,8 +192,8 @@ function createInstructionsSheet() {
 function exportFile(type) {
   const productsToExport = state.selectedProducts.size ? state.products.filter((item) => state.selectedProducts.has(item.key)) : state.filtered;
   if (!productsToExport.length) return setStatus('Brak danych do eksportu', 'error');
-  const rows = exportRows(productsToExport); const workbook = XLSX.utils.book_new(); const sheet = XLSX.utils.json_to_sheet(rows); addHyperlinks(sheet); if (type !== 'csv') XLSX.utils.book_append_sheet(workbook, createInstructionsSheet(), 'Jak otwierać produkty'); XLSX.utils.book_append_sheet(workbook, sheet, 'Oferta'); const stamp = new Date().toISOString().replace(/[T:.Z]/g, '-').replace(/-+$/, '');
-  if (type === 'csv') { const csv = XLSX.utils.sheet_to_csv(sheet, { FS: ';' }); downloadBlob(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }), `oferta-podglad-demo-${stamp}.csv`); } else XLSX.writeFile(workbook, `oferta-podglad-demo-${stamp}.${type}`, { bookType: type });
+  const rows = exportRows(productsToExport); const workbook = XLSX.utils.book_new(); const sheet = XLSX.utils.json_to_sheet(rows); addHyperlinks(sheet); XLSX.utils.book_append_sheet(workbook, createInstructionsSheet(), 'Jak otwierać produkty'); XLSX.utils.book_append_sheet(workbook, sheet, 'Oferta'); const stamp = new Date().toISOString().replace(/[T:.Z]/g, '-').replace(/-+$/, '');
+  XLSX.writeFile(workbook, `oferta-podglad-demo-${stamp}.${type}`, { bookType: type });
 }
 function productsForExport() {
   return state.selectedProducts.size ? state.products.filter((item) => state.selectedProducts.has(item.key)) : state.filtered;
@@ -217,59 +230,6 @@ async function printOffer() {
   setStatus(`Przygotowano widok PDF dla ${products.length.toLocaleString('pl-PL')} produktów`, 'success');
   triggerPrint();
 }
-async function googleApiRequest(url, accessToken, options = {}) {
-  const response = await fetch(url, { ...options, headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', ...(options.headers || {}) } });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload?.error?.message || `Google API zwróciło HTTP ${response.status}.`);
-  return payload;
-}
-async function createGoogleSheet(accessToken, products) {
-  const rows = exportRows(products);
-  const headers = Object.keys(rows[0]);
-  const values = [headers, ...rows.map((row) => headers.map((header) => row[header] ?? ''))];
-  const stamp = new Date().toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }).replace(/[/:]/g, '-');
-  const spreadsheet = await googleApiRequest('https://sheets.googleapis.com/v4/spreadsheets', accessToken, {
-    method: 'POST',
-    body: JSON.stringify({ properties: { title: `Oferta XML ${stamp}`, locale: 'pl_PL' }, sheets: [{ properties: { title: 'Oferta', gridProperties: { frozenRowCount: 1 } } }] })
-  });
-  const range = encodeURIComponent("'Oferta'!A1");
-  await googleApiRequest(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheet.spreadsheetId}/values/${range}?valueInputOption=RAW`, accessToken, {
-    method: 'PUT', body: JSON.stringify({ range: "'Oferta'!A1", majorDimension: 'ROWS', values })
-  });
-  await googleApiRequest(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheet.spreadsheetId}:batchUpdate`, accessToken, {
-    method: 'POST',
-    body: JSON.stringify({ requests: [
-      { repeatCell: { range: { sheetId: 0, startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { backgroundColor: { red: .16, green: .13, blue: .43 }, textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true } } }, fields: 'userEnteredFormat(backgroundColor,textFormat)' } },
-      { setBasicFilter: { filter: { range: { sheetId: 0, startRowIndex: 0, endRowIndex: values.length, endColumnIndex: headers.length } } } },
-      { autoResizeDimensions: { dimensions: { sheetId: 0, dimension: 'COLUMNS', startIndex: 0, endIndex: headers.length } } }
-    ] })
-  });
-  return spreadsheet.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${spreadsheet.spreadsheetId}/edit`;
-}
-function exportToGoogleSheets() {
-  const products = productsForExport();
-  if (!products.length) return setStatus('Brak danych do eksportu', 'error');
-  if (!googleClientId) return setStatus('Arkusze Google wymagają skonfigurowania identyfikatora OAuth.', 'error');
-  if (!window.google?.accounts?.oauth2) return setStatus('Biblioteka logowania Google nie jest jeszcze gotowa. Spróbuj ponownie.', 'error');
-  const sheetTab = window.open('', '_blank');
-  if (sheetTab) sheetTab.document.title = 'Tworzenie Arkusza Google…';
-  const tokenClient = window.google.accounts.oauth2.initTokenClient({
-    client_id: googleClientId,
-    scope: 'https://www.googleapis.com/auth/drive.file',
-    callback: async (tokenResponse) => {
-      if (tokenResponse.error || !tokenResponse.access_token) { sheetTab?.close(); return setStatus('Logowanie Google zostało anulowane.', 'error'); }
-      elements.googleSheets.disabled = true; setStatus('Tworzenie Arkusza Google…', 'loading');
-      try {
-        const spreadsheetUrl = await createGoogleSheet(tokenResponse.access_token, products);
-        if (sheetTab) sheetTab.location.href = spreadsheetUrl; else window.open(spreadsheetUrl, '_blank', 'noopener');
-        setStatus(`Utworzono Arkusz Google dla ${products.length.toLocaleString('pl-PL')} produktów`, 'success');
-      } catch (error) { sheetTab?.close(); setStatus(error.message || 'Nie udało się utworzyć Arkusza Google.', 'error'); }
-      finally { elements.googleSheets.disabled = false; }
-    },
-    error_callback: () => { sheetTab?.close(); setStatus('Nie udało się otworzyć logowania Google.', 'error'); }
-  });
-  tokenClient.requestAccessToken({ prompt: 'consent' });
-}
 async function loadXml() {
   const url = elements.url.value.trim(); if (!url) return setStatus('Podaj adres XML', 'error');
   elements.load.disabled = true; setStatus('Pobieranie i analiza…', 'loading');
@@ -290,6 +250,7 @@ async function loadXml() {
 elements.load.addEventListener('click', loadXml);
 elements.url.addEventListener('keydown', (event) => { if (event.key === 'Enter') loadXml(); });
 elements.search.addEventListener('input', applyFilters);
+elements.filterField.addEventListener('change', updateAddFilterButton);
 elements.addFilter.addEventListener('click', addFilter);
 elements.clearFilters.addEventListener('click', clearFilters);
 elements.activeFilters.addEventListener('input', (event) => { if (event.target.matches('[data-filter-value]')) { state.activeFilters.set(event.target.dataset.filterKey, event.target.value); applyFilters(); } });
@@ -298,9 +259,7 @@ elements.activeFilters.addEventListener('click', (event) => { const button = eve
 elements.rows.addEventListener('change', (event) => { const checkbox = event.target.closest('[data-product-key]'); if (!checkbox) return; if (checkbox.checked) state.selectedProducts.add(checkbox.dataset.productKey); else state.selectedProducts.delete(checkbox.dataset.productKey); updateSelectionUi(); });
 elements.selectVisible.addEventListener('change', () => { state.filtered.slice(0, 250).forEach((item) => { if (elements.selectVisible.checked) state.selectedProducts.add(item.key); else state.selectedProducts.delete(item.key); }); renderRows(); });
 elements.selectionSummary.addEventListener('click', (event) => { if (!event.target.closest('#clear-selection-button')) return; state.selectedProducts.clear(); renderRows(); });
-elements.csv.addEventListener('click', () => exportFile('csv'));
 elements.xlsx.addEventListener('click', () => exportFile('xlsx'));
 elements.xls.addEventListener('click', () => exportFile('xls'));
 elements.pdf.addEventListener('click', printOffer);
-elements.googleSheets.addEventListener('click', exportToGoogleSheets);
-fetch('/api/config').then((response) => response.json()).then((config) => { state.defaultUrl = config.defaultUrl; state.publicAppUrl = config.publicAppUrl || window.location.origin; googleClientId = config.googleClientId || ''; elements.url.value = config.defaultUrl; if (!googleClientId) elements.googleSheets.title = 'Wymaga konfiguracji Google OAuth'; }).catch(() => { state.publicAppUrl = window.location.origin; elements.url.value = 'https://b2b.netinet.pl/xmlg/22lxnanobig.xml'; });
+fetch('/api/config').then((response) => response.json()).then((config) => { state.defaultUrl = config.defaultUrl; state.publicAppUrl = config.publicAppUrl || window.location.origin; elements.url.value = config.defaultUrl; }).catch(() => { state.publicAppUrl = window.location.origin; elements.url.value = 'https://b2b.netinet.pl/xmlg/22lxnanobig.xml'; });

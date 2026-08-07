@@ -38,9 +38,7 @@ function productRows(products, publicAppUrl) {
 }
 
 export function buildPrintOfferHtml({ products, publicAppUrl, sourceUrl = '', generatedAt = new Date() }) {
-  const categoryCount = new Set(products.map((product) => product.category).filter(Boolean)).size;
   const generatedLabel = new Intl.DateTimeFormat('pl-PL', { dateStyle: 'long', timeStyle: 'short' }).format(generatedAt);
-  const sourceLabel = safeHttpUrl(sourceUrl) || sourceUrl || 'Nie podano';
   return `<!doctype html>
 <html lang="pl">
 <head>
@@ -58,19 +56,15 @@ export function buildPrintOfferHtml({ products, publicAppUrl, sourceUrl = '', ge
     .eyebrow { margin: 0 0 6px; color: #372aac; font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
     h1 { margin: 0 0 8px; font-size: 38px; line-height: 1.04; letter-spacing: -.045em; }
     .lead { margin: 0; color: #625f68; font-size: 14px; }
-    .stats { display: grid; grid-template-columns: 1fr 1fr 1fr 2fr; gap: 8px; margin-bottom: 15px; }
-    .stat { min-width: 0; min-height: 82px; padding: 15px 17px; border-radius: 5px; color: #fff; background: #0d0d10; }
-    .stat:nth-child(2) { background: #29216d; }
-    .stat span { display: block; color: #cbc7e7; font-size: 9px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
-    .stat strong { display: block; margin-top: 10px; overflow-wrap: anywhere; font-size: 20px; }
-    .stat.source strong { font-size: 10px; line-height: 1.35; }
+    .cookie-note { margin: 0 0 15px; padding: 11px 13px; border-left: 3px solid #372aac; color: #4d4954; background: #f4f3f8; font-size: 10px; line-height: 1.45; }
+    .cookie-note strong { color: #201a63; }
     .panel { overflow: hidden; border: 1px solid rgba(9,9,11,.13); border-radius: 13px; background: #fff; box-shadow: 0 18px 52px rgba(9,9,11,.07); }
     table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 10px; }
     thead { display: table-header-group; }
     th { padding: 9px 8px; color: #514d59; background: #f4f3f8; font-size: 8px; text-align: left; text-transform: uppercase; letter-spacing: .06em; }
     td { padding: 8px; border-top: 1px solid rgba(9,9,11,.08); vertical-align: middle; overflow-wrap: anywhere; }
     tr { break-inside: avoid; page-break-inside: avoid; }
-    th:nth-child(1) { width: 52px; } th:nth-child(2) { width: 48px; } th:nth-child(3) { width: 88px; } th:nth-child(5) { width: 130px; } th:nth-child(6) { width: 62px; } th:nth-child(7) { width: 52px; } th:nth-child(8) { width: 100px; }
+    th:nth-child(1) { width: 11mm; } th:nth-child(2) { width: 10mm; } th:nth-child(3) { width: 22mm; } th:nth-child(5) { width: 27mm; } th:nth-child(6) { width: 15mm; } th:nth-child(7) { width: 10mm; } th:nth-child(8) { width: 25mm; }
     .image-cell { text-align: center; }
     .image-cell img { width: 38px; height: 38px; object-fit: contain; border-radius: 7px; background: #f2f1fa; }
     .no-image { color: #77717f; font-size: 8px; }
@@ -78,12 +72,23 @@ export function buildPrintOfferHtml({ products, publicAppUrl, sourceUrl = '', ge
     a { color: #2e247e; text-decoration-color: rgba(46,36,126,.35); text-underline-offset: 2px; }
     .numeric { text-align: right; font-variant-numeric: tabular-nums; }
     .footer-note { margin: 10px 2px 0; color: #625f68; font-size: 9px; }
-    @page { size: A4 landscape; margin: 9mm; }
+    @page { size: A4 portrait; margin: 7mm; }
     @media print {
       html, body { background: #fff !important; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
       .toolbar { display: none !important; }
       .page { width: 100%; margin: 0; padding: 0; }
+      .hero { margin-bottom: 3mm; }
+      .eyebrow { margin-bottom: 1mm; font-size: 7pt; }
+      h1 { margin-bottom: 1mm; font-size: 20pt; }
+      .lead { font-size: 8pt; }
+      .cookie-note { margin-bottom: 3mm; padding: 2.5mm 3mm; font-size: 6.5pt; line-height: 1.35; }
       .panel { box-shadow: none; }
+      table { font-size: 6.5pt; }
+      th { padding: 1.8mm 1.2mm; font-size: 5.5pt; letter-spacing: .03em; }
+      td { padding: 1.5mm 1.2mm; }
+      .image-cell img { width: 9mm; height: 9mm; border-radius: 1.5mm; }
+      .no-image { font-size: 5.5pt; }
+      .footer-note { margin-top: 2mm; font-size: 6pt; }
       a { color: #2e247e !important; }
     }
   </style>
@@ -96,12 +101,7 @@ export function buildPrintOfferHtml({ products, publicAppUrl, sourceUrl = '', ge
       <h1>Oferta produktowa</h1>
       <p class="lead">Widok produktów przygotowany ${escapeHtml(generatedLabel)}.</p>
     </header>
-    <section class="stats" aria-label="Podsumowanie oferty">
-      <article class="stat"><span>Produktów</span><strong>${products.length.toLocaleString('pl-PL')}</strong></article>
-      <article class="stat"><span>Kategorii</span><strong>${categoryCount.toLocaleString('pl-PL')}</strong></article>
-      <article class="stat"><span>Format</span><strong>PDF</strong></article>
-      <article class="stat source"><span>Źródło</span><strong>${escapeHtml(sourceLabel)}</strong></article>
-    </section>
+    <p class="cookie-note"><strong>Informacja:</strong> Kliknięcie nazwy produktu powoduje przejście do serwisu b2b.netinet.pl i automatyczne zalogowanie na publiczne konto demonstracyjne. Serwis Netinet może zapisać niezbędny plik cookie służący do utrzymania sesji użytkownika.</p>
     <section class="panel">
       <table>
         <thead><tr><th>Zdjęcie</th><th>ID</th><th>Kod produktu</th><th>Nazwa</th><th>Kategoria</th><th>Cena</th><th>Stan</th><th>EAN</th></tr></thead>

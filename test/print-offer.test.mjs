@@ -25,7 +25,11 @@ test("print view keeps the current offer fields and a working demo product link"
   assert.match(html, /EFB_028152/);
   assert.match(html, /4049759028152/);
   assert.match(html, /open-product\?target=https%3A%2F%2Fb2b\.netinet\.pl%2Fwtyki-gniazda-adaptery%2F35-adapter\.html/);
-  assert.match(html, /@page \{ size: A4 landscape;/);
+  assert.match(html, /@page \{ size: A4 portrait;/);
+  assert.match(html, /th:nth-child\(8\) \{ width: 25mm; \}/);
+  assert.doesNotMatch(html, /class="stats"/);
+  assert.doesNotMatch(html, /Podsumowanie oferty/);
+  assert.match(html, /Serwis Netinet może zapisać niezbędny plik cookie/);
 });
 
 test("print view escapes product data and rejects unsafe image protocols", () => {

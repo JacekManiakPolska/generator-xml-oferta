@@ -4,15 +4,14 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Generator plików z XML</title>
-    <link rel="stylesheet" href="/styles.css?v=20260806-1">
+    <link rel="stylesheet" href="/styles.css?v=20260807-6">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
     <main class="shell">
       <header class="hero">
         <p class="eyebrow">Generator oferty</p>
-        <h1>XML → PDF, XLSX, XLS, CSV</h1>
+        <h1>XML → PDF, XLSX, XLS</h1>
         <p class="lead">Pobierz ofertę z adresu URL, sprawdź produkty i wyeksportuj wybrany zestaw danych.</p>
       </header>
       <section class="panel source-panel">
@@ -43,20 +42,18 @@
               <legend>Eksport danych</legend>
               <label class="export-option"><input id="include-image-urls" type="checkbox" checked> Dołącz URL-e zdjęć</label>
               <div class="export-button-group" role="group" aria-label="Format eksportu">
-                <button id="csv-button" class="button button-export" type="button"><span>CSV</span><span class="format-mark" aria-hidden="true">.csv</span></button>
                 <button id="xlsx-button" class="button button-export" type="button"><span>XLSX</span><span class="format-mark" aria-hidden="true">.xlsx</span></button>
                 <button id="xls-button" class="button button-export" type="button"><span>XLS</span><span class="format-mark" aria-hidden="true">.xls</span></button>
                 <button id="pdf-button" class="button button-export" type="button"><span>PDF</span><span class="format-mark" aria-hidden="true">drukuj</span></button>
-                <button id="google-sheets-button" class="button button-export button-google" type="button"><span>Google</span><span class="format-mark" aria-hidden="true">Sheets</span></button>
               </div>
             </fieldset>
           </div>
           <div class="filters">
-            <label>Wyszukaj <input id="search" type="search" placeholder="nazwa, kod produktu, EAN, MPN..."></label>
+            <label>Wyszukaj <input id="search" type="search" placeholder="np. EAN, nazwa produktu — oddziel frazy przecinkami"></label>
             <div class="filter-builder">
               <label>Znacznik XML <select id="filter-field"><option value="">Najpierw wczytaj XML</option></select></label>
-              <button id="add-filter-button" type="button" class="button button-filter-add"><span aria-hidden="true">＋</span> Dodaj filtr</button>
-              <button id="clear-filters-button" type="button" class="button button-text quiet">Wyczyść filtry <span aria-hidden="true">↗</span></button>
+              <button id="add-filter-button" type="button" class="button button-filter-add" disabled title="Najpierw wybierz znacznik XML"><span aria-hidden="true">＋</span><span data-add-filter-label>Wybierz znacznik</span></button>
+              <button id="clear-filters-button" type="button" class="button button-clear-filters" disabled title="Brak aktywnych filtrów"><span class="clear-filter-icon" aria-hidden="true">×</span><span>Wyczyść filtry</span></button>
             </div>
           </div>
           <div id="active-filters" class="active-filters" aria-live="polite"></div>
@@ -66,6 +63,6 @@
         </section>
       </section>
     </main>
-    <script type="module" src="/app.js?v=20260807-1"></script>
+    <script type="module" src="/app.js?v=20260807-3"></script>
   </body>
 </html>
