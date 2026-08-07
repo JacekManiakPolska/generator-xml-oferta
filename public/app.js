@@ -4,11 +4,17 @@ import { productMatchesSearch } from './product-search.js';
 const state = { products: [], filtered: [], defaultUrl: '', loadedUrl: '', publicAppUrl: '', filterDefinitions: [], activeFilters: new Map(), selectedProducts: new Set() };
 const $ = (id) => document.getElementById(id);
 const elements = {
-  url: $('xml-url'), load: $('load-button'), status: $('source-status'), results: $('results'), productCount: $('product-count'), visibleCount: $('visible-count'), categoryCount: $('category-count'), loadedUrl: $('loaded-url'), search: $('search'), filterField: $('filter-field'), addFilter: $('add-filter-button'), clearFilters: $('clear-filters-button'), activeFilters: $('active-filters'), selectionSummary: $('selection-summary'), selectVisible: $('select-visible'), rows: $('product-rows'), note: $('table-note'), includeImageUrls: $('include-image-urls'), xlsx: $('xlsx-button'), xls: $('xls-button'), pdf: $('pdf-button')
+  url: $('xml-url'), load: $('load-button'), status: $('source-status'), results: $('results'), welcomeGuide: $('welcome-guide'), productCount: $('product-count'), visibleCount: $('visible-count'), categoryCount: $('category-count'), loadedUrl: $('loaded-url'), search: $('search'), filterField: $('filter-field'), addFilter: $('add-filter-button'), clearFilters: $('clear-filters-button'), activeFilters: $('active-filters'), selectionSummary: $('selection-summary'), selectVisible: $('select-visible'), rows: $('product-rows'), note: $('table-note'), includeImageUrls: $('include-image-urls'), xlsx: $('xlsx-button'), xls: $('xls-button'), pdf: $('pdf-button'), tipText: $('tip-text'), tipCounter: $('tip-counter'), tipDots: $('tip-dots'), tipPrev: $('tip-prev'), tipNext: $('tip-next')
 };
 const SELECT_FILTER_LIMIT = 150;
 const numberFormatter = new Intl.NumberFormat('pl-PL');
 const counterAnimations = new WeakMap();
+const welcomeTips = [
+  'Użyj bezpośredniego adresu do pliku .xml. Link powinien zaczynać się od http:// lub https://.',
+  'Najpierw wczytaj XML, a następnie wyszukuj wiele produktów, oddzielając frazy przecinkami.',
+  'Przed eksportem możesz zaznaczyć konkretne produkty albo pobrać cały aktualnie przefiltrowany zestaw.'
+];
+let welcomeTipIndex = 0;
 
 function text(node) { return node?.textContent?.trim() || ''; }
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character])); }
@@ -21,6 +27,16 @@ function parseProduct(node) {
   return { key: url || id, id, url, price: node.getAttribute('price') || '', avail: node.getAttribute('avail') || '', stock: node.getAttribute('stock') || '', weight: node.getAttribute('weight') || '', category: text(node.querySelector(':scope > cat')), name: text(node.querySelector(':scope > name')), description: node.querySelector(':scope > desc')?.textContent || '', images, attributes };
 }
 function setStatus(message, type = '') { elements.status.textContent = message; elements.status.className = `status ${type}`; }
+function renderWelcomeTip() {
+  if (!elements.tipText) return;
+  elements.tipText.textContent = welcomeTips[welcomeTipIndex];
+  elements.tipCounter.textContent = `Porada ${welcomeTipIndex + 1}/${welcomeTips.length}`;
+  [...elements.tipDots.children].forEach((dot, index) => dot.classList.toggle('active', index === welcomeTipIndex));
+}
+function changeWelcomeTip(direction) {
+  welcomeTipIndex = (welcomeTipIndex + direction + welcomeTips.length) % welcomeTips.length;
+  renderWelcomeTip();
+}
 function animateCounter(element, target, duration = 1000) {
   if (!element) return;
   const activeAnimation = counterAnimations.get(element);
@@ -242,12 +258,14 @@ async function loadXml() {
     const finalUrl = payload?.finalUrl || response.headers.get('x-source-url') || url;
     state.products = parseXml(xmlText); state.filtered = state.products; state.loadedUrl = finalUrl; state.filterDefinitions = buildFilterDefinitions(state.products); state.activeFilters.clear(); state.selectedProducts.clear();
     const categoryCount = uniqueCategories(state.products).length;
-    elements.loadedUrl.textContent = new URL(state.loadedUrl).hostname; elements.results.classList.remove('hidden'); renderFilterFieldOptions(); renderActiveFilters(); applyFilters();
+    elements.loadedUrl.textContent = new URL(state.loadedUrl).hostname; elements.welcomeGuide?.classList.add('hidden'); elements.results.classList.remove('hidden'); renderFilterFieldOptions(); renderActiveFilters(); applyFilters();
     animateCounter(elements.productCount, state.products.length); animateCounter(elements.visibleCount, state.filtered.length); animateCounter(elements.categoryCount, categoryCount);
     setStatus(`Wczytano ${state.products.length.toLocaleString('pl-PL')} produktów`, 'success');
   } catch (error) { setStatus(error.message || 'Wystąpił błąd', 'error'); } finally { elements.load.disabled = false; }
 }
 elements.load.addEventListener('click', loadXml);
+elements.tipPrev?.addEventListener('click', () => changeWelcomeTip(-1));
+elements.tipNext?.addEventListener('click', () => changeWelcomeTip(1));
 elements.url.addEventListener('keydown', (event) => { if (event.key === 'Enter') loadXml(); });
 elements.search.addEventListener('input', applyFilters);
 elements.filterField.addEventListener('change', updateAddFilterButton);
