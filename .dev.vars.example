@@ -1,0 +1,13 @@
+# Skopiuj ten plik jako .dev.vars i uzupełnij tylko lokalnie.
+# Pliku .dev.vars nie wysyłaj do repozytorium.
+
+XML_FETCH_ENABLED=true
+DEFAULT_XML_URL=https://b2b.netinet.pl/xmlg/22lxnanobig.xml
+PUBLIC_APP_URL=http://localhost:8787
+
+# Dane używane wyłącznie przez opcjonalny podgląd produktu.
+NETINET_DEMO_EMAIL=your-demo-email@example.com
+NETINET_DEMO_PASSWORD=replace-with-local-value
+
+# Opcjonalna konfiguracja logowania Google.
+GOOGLE_CLIENT_ID=
