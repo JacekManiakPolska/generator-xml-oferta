@@ -10,6 +10,8 @@ h1, h2, p { margin-top: 0; } h1 { margin-bottom: 12px; font-size: clamp(34px, 5v
 .hero-copy { max-width: 690px; }
 .welcome-hero h1 { max-width: 680px; margin-bottom: 28px; color: #151735; font-size: clamp(44px, 4.8vw, 68px); font-weight: 540; line-height: 1.1; letter-spacing: -.045em; }
 .welcome-hero .lead { max-width: 630px; margin-bottom: 31px; color: #62677c; font-size: 17px; line-height: 1.65; }
+.scope-notice { display: grid; gap: 3px; max-width: 630px; margin: -10px 0 24px; padding: 12px 15px; border: 1px solid rgba(55,42,172,.24); border-left: 4px solid var(--accent); border-radius: 5px; color: #514d68; background: rgba(255,255,255,.7); font-size: 13px; line-height: 1.45; }
+.scope-notice strong { color: var(--accent-dark); font-size: 12px; letter-spacing: .035em; text-transform: uppercase; }
 .author-line { display: flex; align-items: center; gap: 8px; margin: 0; color: #403b50; font-size: 14px; }
 .author-line strong { color: var(--accent); }
 .author-icon { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 34px; border: 1.5px solid #6658d8; border-radius: 50%; color: #4b3ec1; }

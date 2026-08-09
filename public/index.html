@@ -4,8 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Generator oferty XML → PDF, XLSX i XLS</title>
-    <meta name="description" content="Bezpieczny generator czytelnych ofert produktowych z plików XML do formatów PDF, XLSX i XLS.">
-    <link rel="stylesheet" href="/styles.css?v=20260807-9">
+    <meta name="description" content="Wewnętrzny generator czytelnych ofert PDF, XLSX i XLS z plików XML generowanych przez firmę Netinet.">
+    <link rel="stylesheet" href="/styles.css?v=20260809-10">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   </head>
   <body>
@@ -15,6 +15,10 @@
           <p class="eyebrow">Generator oferty XML</p>
           <h1>Zamień plik XML<br>w czytelną ofertę</h1>
           <p class="lead">Pobierz dane z pliku XML, wybierz potrzebne produkty i przygotuj profesjonalną ofertę w formacie PDF, XLSX lub XLS.</p>
+          <aside class="scope-notice" aria-label="Zakres działania aplikacji">
+            <strong>Projekt do użytku wewnętrznego</strong>
+            <span>Aplikacja obsługuje obecnie wyłącznie pliki XML generowane przez firmę Netinet.</span>
+          </aside>
           <p class="author-line"><span class="author-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M6.5 19c.4-3.4 2.2-5.2 5.5-5.2s5.1 1.8 5.5 5.2"/></svg></span><span>Projekt i wykonanie: <strong>Jacek Maniak</strong><br>Technologie: HTML, CSS, JavaScript, Node.js, Cloudflare Workers, SheetJS i OpenAI Codex</span></p>
         </div>
         <div class="hero-visual" aria-hidden="true">
@@ -46,15 +50,15 @@
         <div class="source-form">
           <label for="xml-url">URL oferty</label>
           <div class="url-row">
-            <input id="xml-url" type="url" placeholder="https://example.com/oferta.xml" autocomplete="off">
+            <input id="xml-url" type="url" placeholder="Adres pliku XML wygenerowanego przez Netinet" autocomplete="off">
             <button id="load-button" class="button button-load" type="button"><span>Pobierz XML</span><span class="button-icon" aria-hidden="true">→</span></button>
           </div>
-          <p class="hint">Możesz użyć adresu domyślnego albo wkleić bezpośredni adres do własnego pliku XML.</p>
+          <p class="hint">Możesz użyć adresu domyślnego albo wkleić bezpośredni adres do pliku XML wygenerowanego przez Netinet.</p>
         </div>
       </section>
       <section id="welcome-guide" class="welcome-guide" aria-label="Jak działa Generator XML">
         <ol class="steps-panel" aria-label="Trzy kroki tworzenia oferty">
-          <li class="step-item"><span class="step-icon" aria-hidden="true">↗</span><span><strong>1. Wklej adres XML</strong><small>Podaj bezpośredni adres do pliku dostępnego w internecie.</small></span></li>
+          <li class="step-item"><span class="step-icon" aria-hidden="true">↗</span><span><strong>1. Wklej adres XML</strong><small>Podaj adres do pliku wygenerowanego przez Netinet.</small></span></li>
           <li class="step-item"><span class="step-icon step-sliders" aria-hidden="true">≡</span><span><strong>2. Wybierz i filtruj produkty</strong><small>Wyszukaj produkty i wybierz potrzebne dane.</small></span></li>
           <li class="step-item"><span class="step-icon" aria-hidden="true">↓</span><span><strong>3. Pobierz gotową ofertę</strong><small>Zapisz wynik jako PDF, XLSX lub XLS.</small></span></li>
         </ol>
@@ -65,7 +69,7 @@
             <div>
               <p class="eyebrow">Podstawy</p>
               <h2>Czym jest plik XML?</h2>
-              <p>XML to uporządkowany plik tekstowy służący do przechowywania i wymiany danych między systemami. Może zawierać różne informacje, np. produkty, ceny, zamówienia, dokumenty lub ustawienia. Ten generator pracuje z plikami XML zawierającymi oferty produktowe.</p>
+              <p>XML to uporządkowany plik tekstowy służący do przechowywania i wymiany danych między systemami. Ten generator jest projektem do użytku wewnętrznego i pracuje wyłącznie ze strukturą ofert produktowych generowaną przez firmę Netinet.</p>
               <pre class="xml-sample" aria-label="Przykładowy fragment pliku XML"><code>&lt;name&gt;Adapter USB&lt;/name&gt;
 &lt;price&gt;29.90&lt;/price&gt;</code></pre>
             </div>
@@ -73,7 +77,7 @@
 
           <aside class="tips-card" aria-labelledby="tips-title">
             <div class="tips-topline"><span id="tips-title">Warto wiedzieć</span><span id="tip-counter">Porada 1/3</span></div>
-            <p id="tip-text" class="tip-text" aria-live="polite">Użyj bezpośredniego adresu do pliku .xml. Link powinien zaczynać się od http:// lub https://.</p>
+            <p id="tip-text" class="tip-text" aria-live="polite">Użyj adresu do pliku XML wygenerowanego przez Netinet. Link powinien zaczynać się od http:// lub https://.</p>
             <div class="tips-controls">
               <button id="tip-prev" class="tip-arrow" type="button" aria-label="Poprzednia porada">←</button>
               <div id="tip-dots" class="tip-dots" aria-hidden="true"><span class="active"></span><span></span><span></span></div>
@@ -98,7 +102,7 @@
             <li><span class="security-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m5.6 18.4 12.8-12.8"/></svg></span><span>Bez trwałego zapisywania oferty</span></li>
           </ul>
         </section>
-        <p class="welcome-footer">Narzędzie przygotowane do sprawnego tworzenia ofert produktowych z feedów XML.</p>
+        <p class="welcome-footer">Wewnętrzne narzędzie przygotowane do tworzenia ofert produktowych z plików XML firmy Netinet.</p>
       </section>
       <section id="results" class="hidden">
         <div class="stats-grid">
@@ -135,6 +139,6 @@
         </section>
       </section>
     </main>
-    <script type="module" src="/app.js?v=20260809-2"></script>
+    <script type="module" src="/app.js?v=20260809-3"></script>
   </body>
 </html>

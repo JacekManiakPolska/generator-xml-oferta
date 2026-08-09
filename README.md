@@ -5,7 +5,9 @@
 ![Tests](https://img.shields.io/badge/testy-automatyczne-2ea44f)
 ![Status](https://img.shields.io/badge/status-wersja%20treningowa-372aac)
 
-Publiczna aplikacja webowa, która pobiera ofertę produktową z pliku XML, pozwala wyszukiwać i filtrować produkty, a następnie przygotować ofertę w formacie PDF, XLSX lub XLS.
+Publiczna wersja demonstracyjna aplikacji do użytku wewnętrznego, która pobiera ofertę produktową z pliku XML, pozwala wyszukiwać i filtrować produkty, a następnie przygotować ofertę w formacie PDF, XLSX lub XLS.
+
+> **Zakres projektu:** aplikacja obsługuje obecnie wyłącznie pliki XML generowane przez firmę Netinet. Parser został przygotowany pod strukturę danych Netinet (`offers > o`), dlatego poprawna obsługa plików z innych systemów nie jest gwarantowana.
 
 [Uruchom aplikację](https://generator-xml-oferta-training.admprocpu.workers.dev/) · [Zobacz wersję treningową na GitHubie](https://github.com/JacekManiakPolska/generator-xml-oferta/tree/codex/training-deployment)
 
@@ -13,7 +15,7 @@ Publiczna aplikacja webowa, która pobiera ofertę produktową z pliku XML, pozw
 
 ## Najważniejsze funkcjonalności
 
-- pobieranie domyślnego albo własnego adresu XML,
+- pobieranie domyślnego albo podanego przez użytkownika adresu pliku XML wygenerowanego przez Netinet,
 - odczytywanie oferty Netinet w strukturze `offers > o`,
 - inteligentne wyszukiwanie wielu fraz oddzielonych przecinkami,
 - filtrowanie po kategoriach i znacznikach znajdujących się w XML,
@@ -24,7 +26,7 @@ Publiczna aplikacja webowa, która pobiera ofertę produktową z pliku XML, pozw
 
 ## Jak działa aplikacja
 
-1. Użytkownik podaje adres pliku XML albo korzysta z danych demonstracyjnych.
+1. Użytkownik podaje adres pliku XML wygenerowanego przez Netinet albo korzysta z danych demonstracyjnych.
 2. Backend pobiera plik, sprawdza adres i limit rozmiaru, a przeglądarka odczytuje produkty.
 3. Użytkownik wyszukuje, filtruje i zaznacza potrzebne pozycje.
 4. Gotową ofertę można wyeksportować do arkusza albo zapisać jako PDF.

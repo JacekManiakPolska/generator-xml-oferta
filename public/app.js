@@ -12,7 +12,7 @@ const SELECT_FILTER_LIMIT = 150;
 const numberFormatter = new Intl.NumberFormat('pl-PL');
 const counterAnimations = new WeakMap();
 const welcomeTips = [
-  'Użyj bezpośredniego adresu do pliku .xml. Link powinien zaczynać się od http:// lub https://.',
+  'Użyj adresu do pliku XML wygenerowanego przez Netinet. Link powinien zaczynać się od http:// lub https://.',
   'Najpierw wczytaj XML, a następnie wyszukuj wiele produktów, oddzielając frazy przecinkami.',
   'Przed eksportem możesz zaznaczyć konkretne produkty albo pobrać cały aktualnie przefiltrowany zestaw.'
 ];
