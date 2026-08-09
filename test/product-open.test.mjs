@@ -17,6 +17,12 @@ after(async () => {
   if (server.listening) await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
 });
 
+test("local server listens only on the user's computer", () => {
+  const address = server.address();
+
+  assert.equal(address.address, "127.0.0.1");
+});
+
 test("local server sends the full product URL as the post-login destination", async () => {
   const address = server.address();
   const response = await fetch(`http://127.0.0.1:${address.port}/open-product?target=${encodeURIComponent(PRODUCT_URL)}`);

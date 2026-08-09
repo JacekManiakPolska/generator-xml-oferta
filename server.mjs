@@ -6,6 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const PORT = Number(process.env.PORT || 3000);
+const LOCAL_HOST = "127.0.0.1";
 const DEFAULT_XML_URL = "https://b2b.netinet.pl/xmlg/22lxnanobig.xml";
 const NETINET_ORIGIN = "https://b2b.netinet.pl";
 const NETINET_DEMO_EMAIL = process.env.NETINET_DEMO_EMAIL || "demo@netinet.pl";
@@ -175,6 +176,6 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => console.log(`Generator XML działa na http://localhost:${PORT}`));
+server.listen(PORT, LOCAL_HOST, () => console.log(`Generator XML działa na http://localhost:${PORT}`));
 
 export { server };
