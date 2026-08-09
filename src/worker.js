@@ -118,7 +118,13 @@ export default {
     const url = new URL(request.url);
     try {
       if (url.pathname === "/api/config") return json({ defaultUrl: env.DEFAULT_XML_URL || DEFAULT_XML_URL, googleClientId: env.GOOGLE_CLIENT_ID || "", publicAppUrl: env.PUBLIC_APP_URL || url.origin });
-      if (url.pathname === "/api/fetch-xml") return fetchXml(url.searchParams.get("url") || env.DEFAULT_XML_URL || DEFAULT_XML_URL);
+      if (url.pathname === "/api/fetch-xml") {
+        if (env.XML_FETCH_ENABLED !== "true") {
+          console.error("deployment_configuration_error: missing XML_FETCH_ENABLED=true");
+          return json({ error: "Brak zmiennej XML_FETCH_ENABLED w środowisku uruchomieniowym." }, 500);
+        }
+        return fetchXml(url.searchParams.get("url") || env.DEFAULT_XML_URL || DEFAULT_XML_URL);
+      }
       if (url.pathname === "/open-product") return new Response(createProductOpenPage(url.searchParams.get("target") || ""), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" } });
       if (url.pathname === "/product-preview") return new Response(await fetchProductPreview(url.searchParams.get("target") || "", env), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" } });
       return env.ASSETS.fetch(request);
