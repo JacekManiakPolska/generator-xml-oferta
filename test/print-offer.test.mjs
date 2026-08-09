@@ -39,3 +39,16 @@ test("print view escapes product data and rejects unsafe image protocols", () =>
   assert.match(html, /Adapter RJ45 &lt;script&gt;alert\(1\)&lt;\/script&gt;/);
   assert.doesNotMatch(html, /src="javascript:/);
 });
+
+test("print view does not request images from local, private or unapproved hosts", () => {
+  const products = [
+    { ...product, id: "local", images: ["http://127.0.0.1/admin"] },
+    { ...product, id: "private", images: ["http://192.168.1.1/router.png"] },
+    { ...product, id: "lookalike", images: ["https://b2b.netinet.pl.evil.example/image.jpg"] },
+    { ...product, id: "approved", images: ["https://b2b.netinet.pl/adapter.jpg"] }
+  ];
+  const html = buildPrintOfferHtml({ products, publicAppUrl: "https://generator.example.test" });
+
+  assert.doesNotMatch(html, /127\.0\.0\.1|192\.168\.1\.1|b2b\.netinet\.pl\.evil/);
+  assert.match(html, /src="https:\/\/b2b\.netinet\.pl\/adapter\.jpg"/);
+});

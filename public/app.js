@@ -1,6 +1,7 @@
 import { buildPrintOfferHtml } from './print-offer.js';
 import { productMatchesSearch } from './product-search.js';
 import { buildSelectionView } from './selection-view.js';
+import { safeImageUrl } from './image-url.js';
 
 const state = { products: [], filtered: [], defaultUrl: '', loadedUrl: '', publicAppUrl: '', filterDefinitions: [], activeFilters: new Map(), selectedProducts: new Set(), showSelectedOnly: false, selectionDetailsOpen: false };
 const $ = (id) => document.getElementById(id);
@@ -22,7 +23,7 @@ function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (cha
 function parseProduct(node) {
   const attributes = {};
   node.querySelectorAll(':scope > attrs > a').forEach((item) => { attributes[item.getAttribute('name') || ''] = text(item); });
-  const images = [...node.querySelectorAll(':scope > imgs > *')].map((item) => item.getAttribute('url')).filter(Boolean);
+  const images = [...node.querySelectorAll(':scope > imgs > *')].map((item) => safeImageUrl(item.getAttribute('url'))).filter(Boolean);
   const id = node.getAttribute('id') || '';
   const url = node.getAttribute('url') || '';
   return { key: url || id, id, url, price: node.getAttribute('price') || '', avail: node.getAttribute('avail') || '', stock: node.getAttribute('stock') || '', weight: node.getAttribute('weight') || '', category: text(node.querySelector(':scope > cat')), name: text(node.querySelector(':scope > name')), description: node.querySelector(':scope > desc')?.textContent || '', images, attributes };

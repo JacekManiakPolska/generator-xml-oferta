@@ -1,3 +1,5 @@
+import { safeImageUrl } from './image-url.js';
+
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
 }
@@ -20,7 +22,7 @@ function productOpenUrl(productUrl, publicAppUrl) {
 
 function productRows(products, publicAppUrl) {
   return products.map((product) => {
-    const imageUrl = safeHttpUrl(product.images?.[0]);
+    const imageUrl = safeImageUrl(product.images?.[0]);
     const demoUrl = productOpenUrl(product.url, publicAppUrl);
     const name = escapeHtml(product.name || 'Bez nazwy');
     const nameCell = demoUrl ? `<a href="${escapeHtml(demoUrl)}" target="_blank" rel="noopener">${name} <span aria-hidden="true">&#8599;</span></a>` : name;

@@ -15,6 +15,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
 const PUBLIC_APP_URL = process.env.PUBLIC_APP_URL || "https://generator-xml-oferta.admprocpu.workers.dev";
 const MAX_XML_BYTES = 50 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
+const PRODUCT_PREVIEW_CSP = "sandbox; default-src 'none'; script-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none'; form-action 'none'; base-uri 'none'; img-src https://b2b.netinet.pl data:; style-src 'unsafe-inline' https://b2b.netinet.pl; font-src https://b2b.netinet.pl data:";
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(ROOT, "public");
 
@@ -83,8 +84,8 @@ async function fetchXml(value) {
   throw new Error("Nie udało się pobrać XML.");
 }
 
-function send(res, status, body, contentType = "text/plain; charset=utf-8") {
-  res.writeHead(status, { "Content-Type": contentType, "Cache-Control": "no-store" });
+function send(res, status, body, contentType = "text/plain; charset=utf-8", headers = {}) {
+  res.writeHead(status, { "Content-Type": contentType, "Cache-Control": "no-store", ...headers });
   res.end(body);
 }
 
@@ -168,7 +169,7 @@ const server = http.createServer(async (req, res) => {
       return send(res, 200, createProductOpenPage(requestUrl.searchParams.get("target") || ""), "text/html; charset=utf-8");
     }
     if (requestUrl.pathname === "/product-preview") {
-      return send(res, 200, await fetchProductPreview(requestUrl.searchParams.get("target") || ""), "text/html; charset=utf-8");
+      return send(res, 200, await fetchProductPreview(requestUrl.searchParams.get("target") || ""), "text/html; charset=utf-8", { "Content-Security-Policy": PRODUCT_PREVIEW_CSP, "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex" });
     }
     return serveStatic(res, requestUrl.pathname);
   } catch (error) {
