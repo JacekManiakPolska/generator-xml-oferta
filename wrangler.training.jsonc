@@ -1,0 +1,18 @@
+{
+  "name": "generator-xml-oferta-training",
+  "account_id": "ec164339b5543a4b2fb12202639ea282",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-08-03",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS"
+  },
+  "vars": {
+    "DEFAULT_XML_URL": "https://b2b.netinet.pl/xmlg/22lxnanobig.xml",
+    "PUBLIC_APP_URL": "https://generator-xml-oferta-training.admprocpu.workers.dev"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}
