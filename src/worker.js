@@ -4,6 +4,7 @@ const NETINET_DEMO_EMAIL = "demo@netinet.pl";
 const NETINET_DEMO_PASSWORD = "b2bdemo";
 const MAX_XML_BYTES = 50 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
+const XML_FETCH_TIMEOUT_MS = 45_000;
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -39,10 +40,40 @@ function assertSafeUrl(value) {
   return url;
 }
 
+function limitResponseBody(body, maxBytes) {
+  if (!body) return null;
+  const reader = body.getReader();
+  let receivedBytes = 0;
+
+  return new ReadableStream({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) {
+          controller.close();
+          return;
+        }
+        receivedBytes += value.byteLength;
+        if (receivedBytes > maxBytes) {
+          await reader.cancel("XML response exceeded the configured byte limit.");
+          controller.error(new Error("Plik XML przekracza limit 50 MB."));
+          return;
+        }
+        controller.enqueue(value);
+      } catch (error) {
+        controller.error(error);
+      }
+    },
+    cancel(reason) {
+      return reader.cancel(reason);
+    }
+  });
+}
+
 async function fetchXml(value) {
   let current = assertSafeUrl(value);
   for (let attempt = 0; attempt <= MAX_REDIRECTS; attempt += 1) {
-    const response = await fetch(current.toString(), { redirect: "manual" });
+    const response = await fetch(current.toString(), { redirect: "manual", signal: AbortSignal.timeout(XML_FETCH_TIMEOUT_MS) });
     if (response.status >= 300 && response.status < 400) {
       if (attempt === MAX_REDIRECTS) throw new Error("Zbyt wiele przekierowań.");
       const location = response.headers.get("location");
@@ -52,10 +83,16 @@ async function fetchXml(value) {
     }
     if (!response.ok) throw new Error(`Źródło XML zwróciło HTTP ${response.status}.`);
     const contentLength = Number(response.headers.get("content-length") || 0);
-    if (contentLength > MAX_XML_BYTES) throw new Error("Plik XML przekracza limit 50 MB.");
-    return new Response(response.body, {
+    if (contentLength > MAX_XML_BYTES) {
+      await response.body?.cancel("XML response declared a body above the configured byte limit.");
+      throw new Error("Plik XML przekracza limit 50 MB.");
+    }
+    return new Response(limitResponseBody(response.body, MAX_XML_BYTES), {
       headers: {
-        "Content-Type": response.headers.get("content-type") || "application/xml; charset=utf-8",
+        "Content-Type": "application/xml; charset=utf-8",
+        "Content-Disposition": "attachment; filename=offer.xml",
+        "Content-Security-Policy": "sandbox; default-src 'none'",
+        "X-Content-Type-Options": "nosniff",
         "Cache-Control": "no-store",
         "X-Source-Url": current.toString()
       }
@@ -123,7 +160,7 @@ export default {
           console.error("deployment_configuration_error: missing XML_FETCH_ENABLED=true");
           return json({ error: "Brak zmiennej XML_FETCH_ENABLED w środowisku uruchomieniowym." }, 500);
         }
-        return fetchXml(url.searchParams.get("url") || env.DEFAULT_XML_URL || DEFAULT_XML_URL);
+        return await fetchXml(url.searchParams.get("url") || env.DEFAULT_XML_URL || DEFAULT_XML_URL);
       }
       if (url.pathname === "/open-product") return new Response(createProductOpenPage(url.searchParams.get("target") || ""), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" } });
       if (url.pathname === "/product-preview") return new Response(await fetchProductPreview(url.searchParams.get("target") || "", env), { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex" } });
