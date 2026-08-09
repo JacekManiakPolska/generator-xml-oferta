@@ -1,7 +1,8 @@
 import { buildPrintOfferHtml } from './print-offer.js';
 import { productMatchesSearch } from './product-search.js';
+import { buildSelectionView } from './selection-view.js';
 
-const state = { products: [], filtered: [], defaultUrl: '', loadedUrl: '', publicAppUrl: '', filterDefinitions: [], activeFilters: new Map(), selectedProducts: new Set() };
+const state = { products: [], filtered: [], defaultUrl: '', loadedUrl: '', publicAppUrl: '', filterDefinitions: [], activeFilters: new Map(), selectedProducts: new Set(), showSelectedOnly: false, selectionDetailsOpen: false };
 const $ = (id) => document.getElementById(id);
 const elements = {
   url: $('xml-url'), load: $('load-button'), status: $('source-status'), results: $('results'), welcomeGuide: $('welcome-guide'), productCount: $('product-count'), visibleCount: $('visible-count'), categoryCount: $('category-count'), loadedUrl: $('loaded-url'), search: $('search'), filterField: $('filter-field'), addFilter: $('add-filter-button'), clearFilters: $('clear-filters-button'), activeFilters: $('active-filters'), selectionSummary: $('selection-summary'), selectVisible: $('select-visible'), rows: $('product-rows'), note: $('table-note'), includeImageUrls: $('include-image-urls'), xlsx: $('xlsx-button'), xls: $('xls-button'), pdf: $('pdf-button'), tipText: $('tip-text'), tipCounter: $('tip-counter'), tipDots: $('tip-dots'), tipPrev: $('tip-prev'), tipNext: $('tip-next')
@@ -64,6 +65,7 @@ function parseXml(xmlText) {
 function unique(values) { return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pl')); }
 function uniqueCategories(products) { return unique(products.map((item) => item.category)); }
 function productWord(count) { const remainder = count % 100; return count === 1 ? 'produkt' : remainder >= 12 && remainder <= 14 ? 'produktów' : count % 10 >= 2 && count % 10 <= 4 ? 'produkty' : 'produktów'; }
+function visibleWord(count) { const remainder = count % 100; return count === 1 ? 'widoczny' : remainder >= 12 && remainder <= 14 ? 'widocznych' : count % 10 >= 2 && count % 10 <= 4 ? 'widoczne' : 'widocznych'; }
 function valueForFilter(item, key) { return key === 'tag:cat' ? item.category : item.attributes[key.slice(5)] || ''; }
 function buildFilterDefinitions(products) {
   const definitions = [{ key: 'tag:cat', label: 'Kategoria', path: '<cat>', values: uniqueCategories(products) }];
@@ -121,19 +123,36 @@ function updateClearFiltersButton() {
   elements.clearFilters.classList.toggle('is-active', hasFilters);
   elements.clearFilters.title = hasFilters ? 'Usuń wyszukiwanie i wszystkie aktywne filtry' : 'Brak aktywnych filtrów';
 }
-function renderRows() {
-  const rows = state.filtered.slice(0, 250);
-  elements.rows.innerHTML = rows.map((product) => `<tr><td><input class="row-select" type="checkbox" data-product-key="${escapeHtml(product.key)}" aria-label="Zaznacz produkt ${escapeHtml(product.name)}"${state.selectedProducts.has(product.key) ? ' checked' : ''}></td><td>${product.images[0] ? `<img class="thumb" loading="lazy" src="${escapeHtml(product.images[0])}" alt="">` : '<span class="muted">brak</span>'}</td><td>${escapeHtml(product.id)}</td><td>${escapeHtml(product.attributes['Kod Produktu'])}</td><td class="name-cell">${product.url ? `<a class="product-link" href="/open-product?target=${encodeURIComponent(product.url)}" target="_blank" rel="noopener" title="Zaloguj do konta demo i otwórz oryginalną kartę produktu">${escapeHtml(product.name)} <span aria-hidden="true">↗</span></a>` : escapeHtml(product.name)}</td><td>${escapeHtml(product.category)}</td><td>${escapeHtml(product.price)}</td><td>${escapeHtml(product.stock)}</td><td>${escapeHtml(product.attributes.EAN)}</td></tr>`).join('');
-  elements.visibleCount.textContent = state.filtered.length.toLocaleString('pl-PL');
-  elements.note.textContent = state.filtered.length > rows.length ? `Pokazano pierwsze ${rows.length} rekordów. Eksport obejmie wszystkie rekordy spełniające filtry.` : `${rows.length.toLocaleString('pl-PL')} rekordów spełnia aktualne filtry.`;
-  updateSelectionUi(rows);
+function currentSelectionView() {
+  return buildSelectionView({ products: state.products, filtered: state.filtered, selectedKeys: state.selectedProducts, showSelectedOnly: state.showSelectedOnly });
 }
-function updateSelectionUi(visibleRows = state.filtered.slice(0, 250)) {
+function renderRows() {
+  const view = currentSelectionView();
+  const { rows, tableProducts } = view;
+  elements.rows.innerHTML = rows.map((product) => `<tr><td><input class="row-select" type="checkbox" data-product-key="${escapeHtml(product.key)}" aria-label="Zaznacz produkt ${escapeHtml(product.name)}"${state.selectedProducts.has(product.key) ? ' checked' : ''}></td><td>${product.images[0] ? `<img class="thumb" loading="lazy" src="${escapeHtml(product.images[0])}" alt="">` : '<span class="muted">brak</span>'}</td><td>${escapeHtml(product.id)}</td><td>${escapeHtml(product.attributes['Kod Produktu'])}</td><td class="name-cell">${product.url ? `<a class="product-link" href="/open-product?target=${encodeURIComponent(product.url)}" target="_blank" rel="noopener" title="Zaloguj do konta demo i otwórz oryginalną kartę produktu">${escapeHtml(product.name)} <span aria-hidden="true">↗</span></a>` : escapeHtml(product.name)}</td><td>${escapeHtml(product.category)}</td><td>${escapeHtml(product.price)}</td><td>${escapeHtml(product.stock)}</td><td>${escapeHtml(product.attributes.EAN)}</td></tr>`).join('');
+  elements.visibleCount.textContent = tableProducts.length.toLocaleString('pl-PL');
+  elements.note.textContent = state.showSelectedOnly
+    ? `${rows.length.toLocaleString('pl-PL')} zaznaczonych produktów${tableProducts.length > rows.length ? ` z ${tableProducts.length.toLocaleString('pl-PL')}` : ''}. Filtry pozostają aktywne w tle.`
+    : state.filtered.length > rows.length ? `Pokazano pierwsze ${rows.length} rekordów. Eksport obejmie wszystkie rekordy spełniające filtry.` : `${rows.length.toLocaleString('pl-PL')} rekordów spełnia aktualne filtry.`;
+  updateSelectionUi(view);
+}
+function updateSelectionUi(view = currentSelectionView()) {
   const selectedCount = state.selectedProducts.size;
-  elements.selectionSummary.innerHTML = selectedCount ? `<span>Zaznaczono <strong>${selectedCount.toLocaleString('pl-PL')}</strong> ${productWord(selectedCount)} — eksport obejmie tylko zaznaczone.</span><button id="clear-selection-button" type="button" class="quiet">Wyczyść zaznaczenie</button>` : '';
-  const visibleSelected = visibleRows.filter((item) => state.selectedProducts.has(item.key)).length;
-  elements.selectVisible.checked = Boolean(visibleRows.length) && visibleSelected === visibleRows.length;
-  elements.selectVisible.indeterminate = visibleSelected > 0 && visibleSelected < visibleRows.length;
+  if (!selectedCount) {
+    state.showSelectedOnly = false;
+    state.selectionDetailsOpen = false;
+    elements.selectionSummary.innerHTML = '';
+  } else {
+    const visibleCount = view.visibleSelected.length;
+    const hiddenCount = view.hiddenSelected.length;
+    const hiddenToggle = hiddenCount ? `<button id="toggle-hidden-selection" type="button" class="selection-count selection-count-hidden" aria-expanded="${state.selectionDetailsOpen}"><span aria-hidden="true">◌</span>${hiddenCount.toLocaleString('pl-PL')} poza widokiem <span class="selection-chevron" aria-hidden="true">⌄</span></button>` : '';
+    const hiddenDetails = hiddenCount && state.selectionDetailsOpen ? `<div class="selection-hidden-products"><span class="selection-hidden-label">Poza bieżącym widokiem:</span><div class="selection-product-chips">${view.hiddenSelected.slice(0, 6).map((product) => `<span class="selection-product-chip" title="${escapeHtml(product.name)}"><span>${escapeHtml(product.name)}</span><button type="button" data-remove-selected="${escapeHtml(product.key)}" aria-label="Odznacz produkt ${escapeHtml(product.name)}">×</button></span>`).join('')}${hiddenCount > 6 ? `<span class="selection-more">+${(hiddenCount - 6).toLocaleString('pl-PL')} pozostałych</span>` : ''}</div></div>` : '';
+    elements.selectionSummary.innerHTML = `<div class="selection-summary-main"><div class="selection-status"><span>Zaznaczono <strong>${selectedCount.toLocaleString('pl-PL')}</strong> ${productWord(selectedCount)}</span><span class="selection-count">${visibleCount.toLocaleString('pl-PL')} ${visibleWord(visibleCount)}</span>${hiddenToggle}</div><div class="selection-actions"><button id="toggle-selected-view" type="button" class="quiet${state.showSelectedOnly ? ' is-active' : ''}">${state.showSelectedOnly ? 'Wróć do filtrowania' : 'Pokaż zaznaczone'}</button><button id="clear-selection-button" type="button" class="quiet">Wyczyść zaznaczenie</button></div></div>${hiddenDetails}`;
+  }
+  const visibleRows = view.rows;
+  const visibleSelectedCount = visibleRows.filter((item) => state.selectedProducts.has(item.key)).length;
+  elements.selectVisible.checked = Boolean(visibleRows.length) && visibleSelectedCount === visibleRows.length;
+  elements.selectVisible.indeterminate = visibleSelectedCount > 0 && visibleSelectedCount < visibleRows.length;
 }
 function applyFilters() {
   const activeFilters = [...state.activeFilters.entries()].filter(([, value]) => value);
@@ -256,7 +275,7 @@ async function loadXml() {
     if (!response.ok) throw new Error(payload?.error || 'Nie udało się pobrać XML.');
     const xmlText = payload ? payload.text : await response.text();
     const finalUrl = payload?.finalUrl || response.headers.get('x-source-url') || url;
-    state.products = parseXml(xmlText); state.filtered = state.products; state.loadedUrl = finalUrl; state.filterDefinitions = buildFilterDefinitions(state.products); state.activeFilters.clear(); state.selectedProducts.clear();
+    state.products = parseXml(xmlText); state.filtered = state.products; state.loadedUrl = finalUrl; state.filterDefinitions = buildFilterDefinitions(state.products); state.activeFilters.clear(); state.selectedProducts.clear(); state.showSelectedOnly = false; state.selectionDetailsOpen = false;
     const categoryCount = uniqueCategories(state.products).length;
     elements.loadedUrl.textContent = new URL(state.loadedUrl).hostname; elements.welcomeGuide?.classList.add('hidden'); elements.results.classList.remove('hidden'); renderFilterFieldOptions(); renderActiveFilters(); applyFilters();
     animateCounter(elements.productCount, state.products.length); animateCounter(elements.visibleCount, state.filtered.length); animateCounter(elements.categoryCount, categoryCount);
@@ -274,9 +293,15 @@ elements.clearFilters.addEventListener('click', clearFilters);
 elements.activeFilters.addEventListener('input', (event) => { if (event.target.matches('[data-filter-value]')) { state.activeFilters.set(event.target.dataset.filterKey, event.target.value); applyFilters(); } });
 elements.activeFilters.addEventListener('change', (event) => { if (event.target.matches('[data-filter-value]')) { state.activeFilters.set(event.target.dataset.filterKey, event.target.value); applyFilters(); } });
 elements.activeFilters.addEventListener('click', (event) => { const button = event.target.closest('[data-remove-filter]'); if (!button) return; state.activeFilters.delete(button.dataset.removeFilter); renderFilterFieldOptions(); renderActiveFilters(); applyFilters(); });
-elements.rows.addEventListener('change', (event) => { const checkbox = event.target.closest('[data-product-key]'); if (!checkbox) return; if (checkbox.checked) state.selectedProducts.add(checkbox.dataset.productKey); else state.selectedProducts.delete(checkbox.dataset.productKey); updateSelectionUi(); });
-elements.selectVisible.addEventListener('change', () => { state.filtered.slice(0, 250).forEach((item) => { if (elements.selectVisible.checked) state.selectedProducts.add(item.key); else state.selectedProducts.delete(item.key); }); renderRows(); });
-elements.selectionSummary.addEventListener('click', (event) => { if (!event.target.closest('#clear-selection-button')) return; state.selectedProducts.clear(); renderRows(); });
+elements.rows.addEventListener('change', (event) => { const checkbox = event.target.closest('[data-product-key]'); if (!checkbox) return; if (checkbox.checked) state.selectedProducts.add(checkbox.dataset.productKey); else state.selectedProducts.delete(checkbox.dataset.productKey); if (state.showSelectedOnly || !state.selectedProducts.size) renderRows(); else updateSelectionUi(); });
+elements.selectVisible.addEventListener('change', () => { currentSelectionView().rows.forEach((item) => { if (elements.selectVisible.checked) state.selectedProducts.add(item.key); else state.selectedProducts.delete(item.key); }); if (!state.selectedProducts.size) state.showSelectedOnly = false; renderRows(); });
+elements.selectionSummary.addEventListener('click', (event) => {
+  const removeButton = event.target.closest('[data-remove-selected]');
+  if (removeButton) { state.selectedProducts.delete(removeButton.dataset.removeSelected); if (!state.selectedProducts.size) state.showSelectedOnly = false; renderRows(); return; }
+  if (event.target.closest('#toggle-hidden-selection')) { state.selectionDetailsOpen = !state.selectionDetailsOpen; updateSelectionUi(); return; }
+  if (event.target.closest('#toggle-selected-view')) { state.showSelectedOnly = !state.showSelectedOnly; state.selectionDetailsOpen = false; renderRows(); return; }
+  if (event.target.closest('#clear-selection-button')) { state.selectedProducts.clear(); state.showSelectedOnly = false; state.selectionDetailsOpen = false; renderRows(); }
+});
 elements.xlsx.addEventListener('click', () => exportFile('xlsx'));
 elements.xls.addEventListener('click', () => exportFile('xls'));
 elements.pdf.addEventListener('click', printOffer);
