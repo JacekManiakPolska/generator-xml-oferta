@@ -21,10 +21,11 @@ Domyślny feed jest ustawiony na:
 - podgląd produktów, kategorii, SKU, EAN, ceny, stanu i zdjęć,
 - wyszukiwanie oraz filtrowanie po kategorii,
 - eksport filtrowanych rekordów do XLSX i XLS bez opisów HTML,
+- zapis ceny, stanu, dostępności, wagi i liczby zdjęć jako liczb w XLSX i XLS. Numeryczne ID i EAN do 15 cyfr zachowują widoczne zera wiodące. Kod produktu i MPN są tekstem,
 - drukowalny widok PDF w stylistyce aplikacji dla zaznaczonych albo aktualnie filtrowanych produktów,
-- opcjonalne dołączanie wszystkich URL-i zdjęć jako osobnych kolumn w eksporcie.
-- kolumna `Otwórz produkt (demo)` w XLSX/XLS loguje do publicznej oferty demo Netinet i otwiera właściwą kartę produktu; `URL produktu B2B` pozostaje adresem referencyjnym.
+- opcjonalne dołączanie klikalnych linków `Zdjęcie 1`, `Zdjęcie 2` itd. w osobnych kolumnach eksportu.
+- link `Otwórz produkt` loguje do publicznej oferty demo Netinet i otwiera właściwy produkt. Link `Karta w B2B` prowadzi bezpośrednio pod adres produktu z XML-a.
 
-Kliknięcie `Otwórz produkt` uruchamia logowanie do publicznego konta demonstracyjnego Netinet i przekierowuje bezpośrednio na kartę wskazaną w XML. Eksport wykonany lokalnie używa domyślnie publicznego adresu Workera, aby linki działały również na innym komputerze. Adres można nadpisać zmienną `PUBLIC_APP_URL`.
+Instrukcja otwierania produktów znajduje się nad tabelą w arkuszu `Oferta`. Kliknięcie `Otwórz produkt` uruchamia logowanie do publicznego konta demonstracyjnego Netinet i przekierowuje bezpośrednio na kartę wskazaną w XML. Eksport wykonany lokalnie używa domyślnie publicznego adresu Workera, aby linki działały również na innym komputerze. Adres można nadpisać zmienną `PUBLIC_APP_URL`.
 
 Wersja prototypowa ładuje bibliotekę SheetJS z CDN-u. Przy wdrożeniu produkcyjnym przypniemy bibliotekę lokalnie w procesie budowania.

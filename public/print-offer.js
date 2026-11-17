@@ -1,3 +1,5 @@
+import { formatPrice } from './numbers.js';
+
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
 }
@@ -29,7 +31,7 @@ function productRows(products, publicAppUrl) {
       <td>${escapeHtml(product.attributes?.MPN)}</td>
       <td class="name-cell">${nameCell}</td>
       <td>${escapeHtml(product.category)}</td>
-      <td class="numeric">${escapeHtml(product.price)}</td>
+      <td class="numeric">${escapeHtml(formatPrice(product.price))}</td>
       <td class="numeric">${escapeHtml(product.stock)}</td>
       <td>${escapeHtml(product.attributes?.EAN)}</td>
     </tr>`;
@@ -63,7 +65,7 @@ export function buildPrintOfferHtml({ products, publicAppUrl, sourceUrl = '', ge
     th { padding: 9px 8px; color: #514d59; background: #f4f3f8; font-size: 8px; text-align: left; text-transform: uppercase; letter-spacing: .06em; }
     td { padding: 8px; border-top: 1px solid rgba(9,9,11,.08); vertical-align: middle; overflow-wrap: anywhere; }
     tr { break-inside: avoid; page-break-inside: avoid; }
-    th:nth-child(1) { width: 11mm; } th:nth-child(2) { width: 28mm; } th:nth-child(4) { width: 27mm; } th:nth-child(5) { width: 15mm; } th:nth-child(6) { width: 10mm; } th:nth-child(7) { width: 25mm; }
+    th:nth-child(1) { width: 11mm; } th:nth-child(2) { width: 28mm; } th:nth-child(4) { width: 27mm; } th:nth-child(5) { width: 19mm; } th:nth-child(6) { width: 10mm; } th:nth-child(7) { width: 25mm; }
     .image-cell { text-align: center; }
     .image-cell img { width: 38px; height: 38px; object-fit: contain; border-radius: 7px; background: #f2f1fa; }
     .no-image { color: #77717f; font-size: 8px; }

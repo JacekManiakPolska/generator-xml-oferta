@@ -27,12 +27,20 @@ test("print view keeps the current offer fields and a working demo product link"
   assert.match(html, /<td>028152<\/td>/);
   assert.doesNotMatch(html, /<td>35<\/td>|EFB_028152/);
   assert.match(html, /4049759028152/);
+  assert.match(html, /<td class="numeric">3,36\u00a0zł<\/td>/);
   assert.match(html, /open-product\?target=https%3A%2F%2Fb2b\.netinet\.pl%2Fwtyki-gniazda-adaptery%2F35-adapter\.html/);
   assert.match(html, /@page \{ size: A4 portrait;/);
   assert.match(html, /th:nth-child\(7\) \{ width: 25mm; \}/);
   assert.doesNotMatch(html, /class="stats"/);
   assert.doesNotMatch(html, /Podsumowanie oferty/);
   assert.match(html, /Serwis Netinet może zapisać niezbędny plik cookie/);
+});
+
+test("print view formats a zero price and leaves a missing price empty", () => {
+  const html = buildPrintOfferHtml({ products: [{ ...product, price: "0" }, { ...product, price: "" }] });
+
+  assert.match(html, /<td class="numeric">0,00\u00a0zł<\/td>/);
+  assert.match(html, /<td class="numeric"><\/td>/);
 });
 
 test("print view escapes product data and rejects unsafe image protocols", () => {
