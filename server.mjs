@@ -11,6 +11,7 @@ const NETINET_ORIGIN = "https://b2b.netinet.pl";
 const NETINET_DEMO_EMAIL = process.env.NETINET_DEMO_EMAIL || "demo@netinet.pl";
 const NETINET_DEMO_PASSWORD = process.env.NETINET_DEMO_PASSWORD || "b2bdemo";
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const PUBLIC_APP_URL = process.env.PUBLIC_APP_URL || "https://generator-xml-oferta.admprocpu.workers.dev";
 const MAX_XML_BYTES = 50 * 1024 * 1024;
 const MAX_REDIRECTS = 3;
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
@@ -99,8 +100,8 @@ function assertDemoCredentials() {
 function createProductOpenPage(value) {
   assertDemoCredentials();
   const target = getProductUrl(value);
-  const back = `${target.pathname}${target.search}${target.hash}`;
-  const loginUrl = `${NETINET_ORIGIN}/logowanie?back=${encodeURIComponent(back)}`;
+  const back = target.toString();
+  const loginUrl = `${NETINET_ORIGIN}/logowanie`;
   return `<!doctype html><html lang="pl"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>Otwieranie produktu…</title></head><body><p>Logowanie do publicznej oferty demonstracyjnej Netinet…</p><form id="demo-login" action="${escapeHtml(loginUrl)}" method="post"><input type="hidden" name="email" value="${escapeHtml(NETINET_DEMO_EMAIL)}"><input type="hidden" name="password" value="${escapeHtml(NETINET_DEMO_PASSWORD)}"><input type="hidden" name="submitLogin" value="1"><input type="hidden" name="back" value="${escapeHtml(back)}"><noscript><button type="submit">Zaloguj i otwórz produkt</button></noscript></form><script>document.getElementById('demo-login').submit();</script></body></html>`;
 }
 
@@ -157,7 +158,7 @@ async function serveStatic(res, pathname) {
 const server = http.createServer(async (req, res) => {
   try {
     const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
-    if (requestUrl.pathname === "/api/config") return send(res, 200, JSON.stringify({ defaultUrl: DEFAULT_XML_URL, googleClientId: GOOGLE_CLIENT_ID }), "application/json; charset=utf-8");
+    if (requestUrl.pathname === "/api/config") return send(res, 200, JSON.stringify({ defaultUrl: DEFAULT_XML_URL, googleClientId: GOOGLE_CLIENT_ID, publicAppUrl: PUBLIC_APP_URL }), "application/json; charset=utf-8");
     if (requestUrl.pathname === "/api/fetch-xml") {
       const source = requestUrl.searchParams.get("url") || DEFAULT_XML_URL;
       return send(res, 200, JSON.stringify(await fetchXml(source)), "application/json; charset=utf-8");

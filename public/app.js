@@ -1,12 +1,21 @@
-const state = { products: [], filtered: [], defaultUrl: '', loadedUrl: '', filterDefinitions: [], activeFilters: new Map(), selectedProducts: new Set() };
+import { buildPrintOfferHtml } from './print-offer.js';
+import { formatPrice, parseDecimal } from './numbers.js';
+import { productMatchesSearch } from './product-search.js';
+
+const state = { products: [], filtered: [], defaultUrl: '', loadedUrl: '', publicAppUrl: '', filterDefinitions: [], activeFilters: new Map(), selectedProducts: new Set() };
 const $ = (id) => document.getElementById(id);
 const elements = {
-  url: $('xml-url'), load: $('load-button'), status: $('source-status'), results: $('results'), productCount: $('product-count'), visibleCount: $('visible-count'), categoryCount: $('category-count'), loadedUrl: $('loaded-url'), search: $('search'), filterField: $('filter-field'), addFilter: $('add-filter-button'), clearFilters: $('clear-filters-button'), activeFilters: $('active-filters'), selectionSummary: $('selection-summary'), selectVisible: $('select-visible'), rows: $('product-rows'), note: $('table-note'), includeImageUrls: $('include-image-urls'), csv: $('csv-button'), xlsx: $('xlsx-button'), xls: $('xls-button'), googleSheets: $('google-sheets-button')
+  url: $('xml-url'), load: $('load-button'), status: $('source-status'), results: $('results'), welcomeGuide: $('welcome-guide'), productCount: $('product-count'), visibleCount: $('visible-count'), categoryCount: $('category-count'), loadedUrl: $('loaded-url'), search: $('search'), filterField: $('filter-field'), addFilter: $('add-filter-button'), clearFilters: $('clear-filters-button'), activeFilters: $('active-filters'), selectionSummary: $('selection-summary'), selectVisible: $('select-visible'), rows: $('product-rows'), note: $('table-note'), includeImageUrls: $('include-image-urls'), xlsx: $('xlsx-button'), xls: $('xls-button'), pdf: $('pdf-button'), tipText: $('tip-text'), tipCounter: $('tip-counter'), tipDots: $('tip-dots'), tipPrev: $('tip-prev'), tipNext: $('tip-next')
 };
 const SELECT_FILTER_LIMIT = 150;
 const numberFormatter = new Intl.NumberFormat('pl-PL');
 const counterAnimations = new WeakMap();
-let googleClientId = '';
+const welcomeTips = [
+  'Użyj bezpośredniego adresu do pliku .xml. Link powinien zaczynać się od http:// lub https://.',
+  'Najpierw wczytaj XML, a następnie wyszukuj wiele produktów, oddzielając frazy przecinkami.',
+  'Przed eksportem możesz zaznaczyć konkretne produkty albo pobrać cały aktualnie przefiltrowany zestaw.'
+];
+let welcomeTipIndex = 0;
 
 function text(node) { return node?.textContent?.trim() || ''; }
 function escapeHtml(value) { return String(value ?? '').replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character])); }
@@ -19,6 +28,16 @@ function parseProduct(node) {
   return { key: url || id, id, url, price: node.getAttribute('price') || '', avail: node.getAttribute('avail') || '', stock: node.getAttribute('stock') || '', weight: node.getAttribute('weight') || '', category: text(node.querySelector(':scope > cat')), name: text(node.querySelector(':scope > name')), description: node.querySelector(':scope > desc')?.textContent || '', images, attributes };
 }
 function setStatus(message, type = '') { elements.status.textContent = message; elements.status.className = `status ${type}`; }
+function renderWelcomeTip() {
+  if (!elements.tipText) return;
+  elements.tipText.textContent = welcomeTips[welcomeTipIndex];
+  elements.tipCounter.textContent = `Porada ${welcomeTipIndex + 1}/${welcomeTips.length}`;
+  [...elements.tipDots.children].forEach((dot, index) => dot.classList.toggle('active', index === welcomeTipIndex));
+}
+function changeWelcomeTip(direction) {
+  welcomeTipIndex = (welcomeTipIndex + direction + welcomeTips.length) % welcomeTips.length;
+  renderWelcomeTip();
+}
 function animateCounter(element, target, duration = 1000) {
   if (!element) return;
   const activeAnimation = counterAnimations.get(element);
@@ -54,10 +73,18 @@ function buildFilterDefinitions(products) {
   return definitions;
 }
 function getFilterDefinition(key) { return state.filterDefinitions.find((definition) => definition.key === key); }
+function updateAddFilterButton() {
+  const hasSelection = Boolean(elements.filterField.value);
+  const label = elements.addFilter.querySelector('[data-add-filter-label]');
+  elements.addFilter.disabled = !hasSelection;
+  elements.addFilter.classList.toggle('is-ready', hasSelection);
+  elements.addFilter.title = hasSelection ? 'Kliknij, aby dodać wybrany filtr do listy' : 'Najpierw wybierz znacznik XML';
+  if (label) label.textContent = hasSelection ? 'Dodaj wybrany filtr' : 'Wybierz znacznik';
+}
 function renderFilterFieldOptions() {
   const available = state.filterDefinitions.filter((definition) => !state.activeFilters.has(definition.key));
   elements.filterField.innerHTML = '<option value="">Wybierz znacznik XML</option>' + available.map((definition) => `<option value="${escapeHtml(definition.key)}">${escapeHtml(definition.label)} · ${escapeHtml(definition.path)} (${definition.values.length})</option>`).join('');
-  elements.addFilter.disabled = !available.length;
+  updateAddFilterButton();
 }
 function renderActiveFilters() {
   if (!state.activeFilters.size) {
@@ -89,9 +116,15 @@ function clearFilters() {
   renderActiveFilters();
   applyFilters();
 }
+function updateClearFiltersButton() {
+  const hasFilters = state.activeFilters.size > 0 || Boolean(elements.search.value.trim());
+  elements.clearFilters.disabled = !hasFilters;
+  elements.clearFilters.classList.toggle('is-active', hasFilters);
+  elements.clearFilters.title = hasFilters ? 'Usuń wyszukiwanie i wszystkie aktywne filtry' : 'Brak aktywnych filtrów';
+}
 function renderRows() {
   const rows = state.filtered.slice(0, 250);
-  elements.rows.innerHTML = rows.map((product) => `<tr><td><input class="row-select" type="checkbox" data-product-key="${escapeHtml(product.key)}" aria-label="Zaznacz produkt ${escapeHtml(product.name)}"${state.selectedProducts.has(product.key) ? ' checked' : ''}></td><td>${product.images[0] ? `<img class="thumb" loading="lazy" src="${escapeHtml(product.images[0])}" alt="">` : '<span class="muted">brak</span>'}</td><td>${escapeHtml(product.id)}</td><td>${escapeHtml(product.attributes['Kod Produktu'])}</td><td class="name-cell">${product.url ? `<a class="product-link" href="/open-product?target=${encodeURIComponent(product.url)}" target="_blank" rel="noopener" title="Zaloguj do konta demo i otwórz oryginalną kartę produktu">${escapeHtml(product.name)} <span aria-hidden="true">↗</span></a>` : escapeHtml(product.name)}</td><td>${escapeHtml(product.category)}</td><td>${escapeHtml(product.price)}</td><td>${escapeHtml(product.stock)}</td><td>${escapeHtml(product.attributes.EAN)}</td></tr>`).join('');
+  elements.rows.innerHTML = rows.map((product) => `<tr><td><input class="row-select" type="checkbox" data-product-key="${escapeHtml(product.key)}" aria-label="Zaznacz produkt ${escapeHtml(product.name)}"${state.selectedProducts.has(product.key) ? ' checked' : ''}></td><td>${product.images[0] ? `<img class="thumb" loading="lazy" src="${escapeHtml(product.images[0])}" alt="">` : '<span class="muted">brak</span>'}</td><td>${escapeHtml(product.id)}</td><td>${escapeHtml(product.attributes['Kod Produktu'])}</td><td class="name-cell">${product.url ? `<a class="product-link" href="/open-product?target=${encodeURIComponent(product.url)}" target="_blank" rel="noopener" title="Zaloguj do konta demo i otwórz oryginalną kartę produktu">${escapeHtml(product.name)} <span aria-hidden="true">↗</span></a>` : escapeHtml(product.name)}</td><td>${escapeHtml(product.category)}</td><td>${escapeHtml(formatPrice(product.price))}</td><td>${escapeHtml(product.stock)}</td><td>${escapeHtml(product.attributes.EAN)}</td></tr>`).join('');
   elements.visibleCount.textContent = state.filtered.length.toLocaleString('pl-PL');
   elements.note.textContent = state.filtered.length > rows.length ? `Pokazano pierwsze ${rows.length} rekordów. Eksport obejmie wszystkie rekordy spełniające filtry.` : `${rows.length.toLocaleString('pl-PL')} rekordów spełnia aktualne filtry.`;
   updateSelectionUi(rows);
@@ -104,10 +137,9 @@ function updateSelectionUi(visibleRows = state.filtered.slice(0, 250)) {
   elements.selectVisible.indeterminate = visibleSelected > 0 && visibleSelected < visibleRows.length;
 }
 function applyFilters() {
-  const query = elements.search.value.trim().toLocaleLowerCase('pl-PL');
   const activeFilters = [...state.activeFilters.entries()].filter(([, value]) => value);
   state.filtered = state.products.filter((item) => {
-    if (query && ![item.id, item.name, item.category, item.url, ...Object.values(item.attributes)].join(' ').toLocaleLowerCase('pl-PL').includes(query)) return false;
+    if (!productMatchesSearch(item, elements.search.value)) return false;
     return activeFilters.every(([key, selectedValue]) => {
       const value = valueForFilter(item, key);
       if (selectedValue === '__missing__') return !value;
@@ -115,121 +147,147 @@ function applyFilters() {
       return definition?.values.length > SELECT_FILTER_LIMIT ? value.toLocaleLowerCase('pl-PL').includes(selectedValue.toLocaleLowerCase('pl-PL')) : value === selectedValue;
     });
   });
+  updateClearFiltersButton();
   renderRows();
+}
+function productOpenUrl(productUrl) {
+  if (!productUrl) return '';
+  const base = (state.publicAppUrl || window.location.origin).replace(/\/$/, '');
+  return `${base}/open-product?target=${encodeURIComponent(productUrl)}`;
 }
 function exportRows(products) {
   const maxImages = elements.includeImageUrls.checked ? Math.max(0, ...products.map((item) => item.images.length)) : 0;
   return products.map((item) => {
-    const row = { ID: item.id, 'Kod produktu': item.attributes['Kod Produktu'] || '', EAN: item.attributes.EAN || '', MPN: item.attributes.MPN || '', Nazwa: item.name, Kategoria: item.category, Cena: Number(item.price) || item.price, Stan: Number(item.stock) || item.stock, Dostępność: item.avail, Waga: Number(item.weight) || item.weight, 'Otwórz produkt (demo)': `${window.location.origin}/open-product?target=${encodeURIComponent(item.url)}`, 'URL produktu B2B': item.url, 'Liczba zdjęć': item.images.length, Producent: item.attributes.Producent || '', Marka: item.attributes.Marka || '', Jednostka: item.attributes.Jednostka || '' };
+    const row = {
+      ID: item.id,
+      'Kod produktu': item.attributes['Kod Produktu'] || '',
+      EAN: item.attributes.EAN || '',
+      MPN: item.attributes.MPN || '',
+      Nazwa: item.name,
+      Kategoria: item.category,
+      Cena: parseDecimal(item.price),
+      Stan: parseDecimal(item.stock),
+      Dostępność: parseDecimal(item.avail),
+      Waga: parseDecimal(item.weight),
+      'Otwórz produkt (demo)': productOpenUrl(item.url),
+      'URL produktu B2B': item.url,
+      'Liczba zdjęć': item.images.length,
+      Producent: item.attributes.Producent || '',
+      Marka: item.attributes.Marka || '',
+      Jednostka: item.attributes.Jednostka || ''
+    };
     for (let index = 0; index < maxImages; index += 1) row[`URL zdjęcia ${index + 1}`] = item.images[index] || '';
     return row;
   });
 }
-function downloadBlob(blob, filename) { const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); }
-function addHyperlinks(sheet) {
+function formatOfferSheet(sheet, headerRow) {
   const range = XLSX.utils.decode_range(sheet['!ref']);
-  const headers = new Map();
+  const productLinks = new Map([
+    ['Otwórz produkt (demo)', { label: 'Otwórz produkt', tooltip: 'Otwórz demonstracyjny podgląd produktu' }],
+    ['URL produktu B2B', { label: 'Karta w B2B', tooltip: 'Otwórz oryginalną kartę produktu w Netinet B2B' }]
+  ]);
+  const columns = new Map();
+  sheet['!cols'] ??= [];
+
   for (let column = range.s.c; column <= range.e.c; column += 1) {
-    const header = sheet[XLSX.utils.encode_cell({ r: range.s.r, c: column })];
-    headers.set(column, String(header?.v || ''));
+    const header = sheet[XLSX.utils.encode_cell({ r: headerRow, c: column })]?.v || '';
+    const photoNumber = /^URL zdjęcia (\d+)$/.exec(header)?.[1];
+    const link = photoNumber ? { label: `Zdjęcie ${photoNumber}`, tooltip: 'Otwórz zdjęcie produktu' } : productLinks.get(header);
+    const numericIdentifier = header === 'ID' || header === 'EAN';
+    columns.set(column, { header, link, numericIdentifier });
+    if (numericIdentifier) sheet['!cols'][column] = { wch: 17 };
+    if (link) sheet['!cols'][column] = { wch: Math.max(16, header.length + 3) };
   }
-  for (let row = range.s.r + 1; row <= range.e.r; row += 1) {
+  for (let row = headerRow + 1; row <= range.e.r; row += 1) {
     for (let column = range.s.c; column <= range.e.c; column += 1) {
       const cell = sheet[XLSX.utils.encode_cell({ r: row, c: column })];
-      const header = headers.get(column);
-      if (!cell || typeof cell.v !== 'string') continue;
-      if (header === 'Otwórz produkt (demo)' && /^https?:\/\//i.test(cell.v)) {
-        const target = cell.v;
-        cell.v = 'Otwórz produkt';
-        cell.l = { Target: target, Tooltip: 'Otwórz demonstracyjny podgląd produktu' };
-      } else if (/^URL zdjęcia \d+$/.test(header) && /^https?:\/\//i.test(cell.v)) {
-        cell.l = { Target: cell.v, Tooltip: 'Otwórz zdjęcie' };
+      const { header, link, numericIdentifier } = columns.get(column);
+      if (!cell) continue;
+      if (header === 'Cena' && cell.t === 'n') cell.z = '#,##0.00" zł"';
+      if (typeof cell.v !== 'string') continue;
+      if (numericIdentifier && /^\d{1,15}$/.test(cell.v)) {
+        // Preserve the displayed digits within Excel's 15-digit precision limit.
+        cell.z = '0'.repeat(cell.v.length);
+        cell.v = Number(cell.v);
+        cell.t = 'n';
+      } else if (link && /^https?:\/\//i.test(cell.v)) {
+        cell.l = { Target: cell.v, Tooltip: link.tooltip };
+        cell.v = link.label;
       }
     }
   }
 }
-function createInstructionsSheet() {
-  const rows = [
+function createOfferSheet(rows) {
+  const instructions = [
     ['Jak otwierać produkty z oferty Netinet'],
-    [],
-    ['Kliknij link "Otwórz produkt" w arkuszu Oferta. Generator zaloguje Cię automatycznie do publicznego konta demonstracyjnego i otworzy oryginalną kartę produktu.'],
+    ['Kliknij link "Otwórz produkt" w tabeli poniżej.'],
+    ['Generator zaloguje Cię automatycznie do publicznego konta demonstracyjnego i otworzy oryginalną kartę produktu.'],
     [],
     ['Logowanie ręczne'],
     ['Adres', 'https://b2b.netinet.pl'],
     ['Login', 'demo@netinet.pl'],
     ['Hasło', 'b2bdemo'],
-    [],
-    ['Jeżeli automatyczne wejście nie zadziała, otwórz powyższy adres, zaloguj się podanymi danymi i ponownie kliknij link produktu.']
+    ['Jeżeli automatyczne wejście nie zadziała, otwórz powyższy adres, zaloguj się podanymi danymi i ponownie kliknij link produktu.'],
+    []
   ];
-  const sheet = XLSX.utils.aoa_to_sheet(rows);
-  sheet['!cols'] = [{ wch: 24 }, { wch: 72 }];
-  sheet['!merges'] = [XLSX.utils.decode_range('A1:B1'), XLSX.utils.decode_range('A3:B3'), XLSX.utils.decode_range('A5:B5'), XLSX.utils.decode_range('A10:B10')];
-  sheet.A6.l = { Target: 'https://b2b.netinet.pl', Tooltip: 'Otwórz stronę logowania Netinet' };
-  sheet.A6.v = 'Adres';
-  sheet.B6.l = { Target: 'https://b2b.netinet.pl', Tooltip: 'Otwórz stronę logowania Netinet' };
+  const sheet = XLSX.utils.aoa_to_sheet(instructions);
+  sheet['!merges'] = ['A1:L1', 'A2:L2', 'A3:L3', 'A5:L5', 'B6:E6', 'B7:E7', 'B8:E8', 'A9:L9']
+    .map((range) => XLSX.utils.decode_range(range));
+  const loginLink = { Target: sheet.B6.v, Tooltip: 'Otwórz stronę logowania Netinet' };
+  sheet.A6.l = loginLink;
+  sheet.B6.l = loginLink;
+
+  const headerRow = instructions.length;
+  XLSX.utils.sheet_add_json(sheet, rows, { origin: headerRow });
+  formatOfferSheet(sheet, headerRow);
   return sheet;
 }
 function exportFile(type) {
   const productsToExport = state.selectedProducts.size ? state.products.filter((item) => state.selectedProducts.has(item.key)) : state.filtered;
   if (!productsToExport.length) return setStatus('Brak danych do eksportu', 'error');
-  const rows = exportRows(productsToExport); const workbook = XLSX.utils.book_new(); const sheet = XLSX.utils.json_to_sheet(rows); addHyperlinks(sheet); if (type !== 'csv') XLSX.utils.book_append_sheet(workbook, createInstructionsSheet(), 'Jak otwierać produkty'); XLSX.utils.book_append_sheet(workbook, sheet, 'Oferta'); const stamp = new Date().toISOString().replace(/[T:.Z]/g, '-').replace(/-+$/, '');
-  if (type === 'csv') { const csv = XLSX.utils.sheet_to_csv(sheet, { FS: ';' }); downloadBlob(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }), `oferta-podglad-demo-${stamp}.csv`); } else XLSX.writeFile(workbook, `oferta-podglad-demo-${stamp}.${type}`, { bookType: type });
+  const sheet = createOfferSheet(exportRows(productsToExport));
+  if (type === 'xls' && XLSX.utils.decode_range(sheet['!ref']).e.r >= 65536) {
+    return setStatus('Oferta z instrukcją przekracza limit wierszy XLS. Wybierz XLSX lub zawęź wyniki.', 'error');
+  }
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Oferta');
+  const stamp = new Date().toISOString().replace(/[T:.Z]/g, '-').replace(/-+$/, '');
+  XLSX.writeFile(workbook, `oferta-podglad-demo-${stamp}.${type}`, { bookType: type, cellStyles: true });
 }
 function productsForExport() {
   return state.selectedProducts.size ? state.products.filter((item) => state.selectedProducts.has(item.key)) : state.filtered;
 }
-async function googleApiRequest(url, accessToken, options = {}) {
-  const response = await fetch(url, { ...options, headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', ...(options.headers || {}) } });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload?.error?.message || `Google API zwróciło HTTP ${response.status}.`);
-  return payload;
-}
-async function createGoogleSheet(accessToken, products) {
-  const rows = exportRows(products);
-  const headers = Object.keys(rows[0]);
-  const values = [headers, ...rows.map((row) => headers.map((header) => row[header] ?? ''))];
-  const stamp = new Date().toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' }).replace(/[/:]/g, '-');
-  const spreadsheet = await googleApiRequest('https://sheets.googleapis.com/v4/spreadsheets', accessToken, {
-    method: 'POST',
-    body: JSON.stringify({ properties: { title: `Oferta XML ${stamp}`, locale: 'pl_PL' }, sheets: [{ properties: { title: 'Oferta', gridProperties: { frozenRowCount: 1 } } }] })
-  });
-  const range = encodeURIComponent("'Oferta'!A1");
-  await googleApiRequest(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheet.spreadsheetId}/values/${range}?valueInputOption=RAW`, accessToken, {
-    method: 'PUT', body: JSON.stringify({ range: "'Oferta'!A1", majorDimension: 'ROWS', values })
-  });
-  await googleApiRequest(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheet.spreadsheetId}:batchUpdate`, accessToken, {
-    method: 'POST',
-    body: JSON.stringify({ requests: [
-      { repeatCell: { range: { sheetId: 0, startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { backgroundColor: { red: .16, green: .13, blue: .43 }, textFormat: { foregroundColor: { red: 1, green: 1, blue: 1 }, bold: true } } }, fields: 'userEnteredFormat(backgroundColor,textFormat)' } },
-      { setBasicFilter: { filter: { range: { sheetId: 0, startRowIndex: 0, endRowIndex: values.length, endColumnIndex: headers.length } } } },
-      { autoResizeDimensions: { dimensions: { sheetId: 0, dimension: 'COLUMNS', startIndex: 0, endIndex: headers.length } } }
-    ] })
-  });
-  return spreadsheet.spreadsheetUrl || `https://docs.google.com/spreadsheets/d/${spreadsheet.spreadsheetId}/edit`;
-}
-function exportToGoogleSheets() {
+async function printOffer() {
   const products = productsForExport();
-  if (!products.length) return setStatus('Brak danych do eksportu', 'error');
-  if (!googleClientId) return setStatus('Arkusze Google wymagają skonfigurowania identyfikatora OAuth.', 'error');
-  if (!window.google?.accounts?.oauth2) return setStatus('Biblioteka logowania Google nie jest jeszcze gotowa. Spróbuj ponownie.', 'error');
-  const sheetTab = window.open('', '_blank');
-  if (sheetTab) sheetTab.document.title = 'Tworzenie Arkusza Google…';
-  const tokenClient = window.google.accounts.oauth2.initTokenClient({
-    client_id: googleClientId,
-    scope: 'https://www.googleapis.com/auth/drive.file',
-    callback: async (tokenResponse) => {
-      if (tokenResponse.error || !tokenResponse.access_token) { sheetTab?.close(); return setStatus('Logowanie Google zostało anulowane.', 'error'); }
-      elements.googleSheets.disabled = true; setStatus('Tworzenie Arkusza Google…', 'loading');
-      try {
-        const spreadsheetUrl = await createGoogleSheet(tokenResponse.access_token, products);
-        if (sheetTab) sheetTab.location.href = spreadsheetUrl; else window.open(spreadsheetUrl, '_blank', 'noopener');
-        setStatus(`Utworzono Arkusz Google dla ${products.length.toLocaleString('pl-PL')} produktów`, 'success');
-      } catch (error) { sheetTab?.close(); setStatus(error.message || 'Nie udało się utworzyć Arkusza Google.', 'error'); }
-      finally { elements.googleSheets.disabled = false; }
-    },
-    error_callback: () => { sheetTab?.close(); setStatus('Nie udało się otworzyć logowania Google.', 'error'); }
+  if (!products.length) return setStatus('Brak danych do wydruku', 'error');
+  const printTab = window.open('', '_blank');
+  if (!printTab) return setStatus('Przeglądarka zablokowała okno wydruku. Zezwól na wyskakujące okna i spróbuj ponownie.', 'error');
+  printTab.opener = null;
+  printTab.document.open();
+  printTab.document.write(buildPrintOfferHtml({ products, publicAppUrl: state.publicAppUrl || window.location.origin, sourceUrl: state.loadedUrl || state.defaultUrl }));
+  printTab.document.close();
+  const triggerPrint = () => { if (!printTab.closed) { printTab.focus(); printTab.print(); } };
+  printTab.document.getElementById('print-now')?.addEventListener('click', triggerPrint);
+  const images = [...printTab.document.images];
+  const settleImage = (image) => new Promise((resolve) => {
+    const showFallback = () => {
+      const fallback = printTab.document.createElement('span');
+      fallback.className = 'no-image';
+      fallback.textContent = 'brak';
+      image.replaceWith(fallback);
+      resolve();
+    };
+    if (image.complete) return image.naturalWidth ? resolve() : showFallback();
+    image.addEventListener('load', resolve, { once: true });
+    image.addEventListener('error', showFallback, { once: true });
   });
-  tokenClient.requestAccessToken({ prompt: 'consent' });
+  await Promise.race([
+    Promise.all(images.map(settleImage)),
+    new Promise((resolve) => setTimeout(resolve, 5000))
+  ]);
+  if (printTab.document.fonts?.ready) await printTab.document.fonts.ready;
+  setStatus(`Przygotowano widok PDF dla ${products.length.toLocaleString('pl-PL')} produktów`, 'success');
+  triggerPrint();
 }
 async function loadXml() {
   const url = elements.url.value.trim(); if (!url) return setStatus('Podaj adres XML', 'error');
@@ -243,14 +301,17 @@ async function loadXml() {
     const finalUrl = payload?.finalUrl || response.headers.get('x-source-url') || url;
     state.products = parseXml(xmlText); state.filtered = state.products; state.loadedUrl = finalUrl; state.filterDefinitions = buildFilterDefinitions(state.products); state.activeFilters.clear(); state.selectedProducts.clear();
     const categoryCount = uniqueCategories(state.products).length;
-    elements.loadedUrl.textContent = new URL(state.loadedUrl).hostname; elements.results.classList.remove('hidden'); renderFilterFieldOptions(); renderActiveFilters(); applyFilters();
+    elements.loadedUrl.textContent = new URL(state.loadedUrl).hostname; elements.welcomeGuide?.classList.add('hidden'); elements.results.classList.remove('hidden'); renderFilterFieldOptions(); renderActiveFilters(); applyFilters();
     animateCounter(elements.productCount, state.products.length); animateCounter(elements.visibleCount, state.filtered.length); animateCounter(elements.categoryCount, categoryCount);
     setStatus(`Wczytano ${state.products.length.toLocaleString('pl-PL')} produktów`, 'success');
   } catch (error) { setStatus(error.message || 'Wystąpił błąd', 'error'); } finally { elements.load.disabled = false; }
 }
 elements.load.addEventListener('click', loadXml);
+elements.tipPrev?.addEventListener('click', () => changeWelcomeTip(-1));
+elements.tipNext?.addEventListener('click', () => changeWelcomeTip(1));
 elements.url.addEventListener('keydown', (event) => { if (event.key === 'Enter') loadXml(); });
 elements.search.addEventListener('input', applyFilters);
+elements.filterField.addEventListener('change', updateAddFilterButton);
 elements.addFilter.addEventListener('click', addFilter);
 elements.clearFilters.addEventListener('click', clearFilters);
 elements.activeFilters.addEventListener('input', (event) => { if (event.target.matches('[data-filter-value]')) { state.activeFilters.set(event.target.dataset.filterKey, event.target.value); applyFilters(); } });
@@ -259,8 +320,7 @@ elements.activeFilters.addEventListener('click', (event) => { const button = eve
 elements.rows.addEventListener('change', (event) => { const checkbox = event.target.closest('[data-product-key]'); if (!checkbox) return; if (checkbox.checked) state.selectedProducts.add(checkbox.dataset.productKey); else state.selectedProducts.delete(checkbox.dataset.productKey); updateSelectionUi(); });
 elements.selectVisible.addEventListener('change', () => { state.filtered.slice(0, 250).forEach((item) => { if (elements.selectVisible.checked) state.selectedProducts.add(item.key); else state.selectedProducts.delete(item.key); }); renderRows(); });
 elements.selectionSummary.addEventListener('click', (event) => { if (!event.target.closest('#clear-selection-button')) return; state.selectedProducts.clear(); renderRows(); });
-elements.csv.addEventListener('click', () => exportFile('csv'));
 elements.xlsx.addEventListener('click', () => exportFile('xlsx'));
 elements.xls.addEventListener('click', () => exportFile('xls'));
-elements.googleSheets.addEventListener('click', exportToGoogleSheets);
-fetch('/api/config').then((response) => response.json()).then((config) => { state.defaultUrl = config.defaultUrl; googleClientId = config.googleClientId || ''; elements.url.value = config.defaultUrl; if (!googleClientId) elements.googleSheets.title = 'Wymaga konfiguracji Google OAuth'; }).catch(() => { elements.url.value = 'https://b2b.netinet.pl/xmlg/22lxnanobig.xml'; });
+elements.pdf.addEventListener('click', printOffer);
+fetch('/api/config').then((response) => response.json()).then((config) => { state.defaultUrl = config.defaultUrl; state.publicAppUrl = config.publicAppUrl || window.location.origin; elements.url.value = config.defaultUrl; }).catch(() => { state.publicAppUrl = window.location.origin; elements.url.value = 'https://b2b.netinet.pl/xmlg/22lxnanobig.xml'; });

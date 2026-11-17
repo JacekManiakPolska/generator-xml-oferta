@@ -3,21 +3,44 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Generator plików z XML</title>
-    <link rel="stylesheet" href="/styles.css?v=20260806-1">
+    <title>Generator oferty XML → PDF, XLSX i XLS</title>
+    <meta name="description" content="Bezpieczny generator czytelnych ofert produktowych z plików XML do formatów PDF, XLSX i XLS.">
+    <link rel="stylesheet" href="/styles.css?v=20260807-9">
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
   </head>
   <body>
     <main class="shell">
-      <header class="hero">
-        <p class="eyebrow">Generator oferty</p>
-        <h1>XML → XLSX, XLS, CSV</h1>
-        <p class="lead">Pobierz ofertę z adresu URL, sprawdź produkty i wyeksportuj wybrany zestaw danych.</p>
+      <header class="hero welcome-hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Generator oferty XML</p>
+          <h1>Zamień plik XML<br>w czytelną ofertę</h1>
+          <p class="lead">Pobierz dane z pliku XML, wybierz potrzebne produkty i przygotuj profesjonalną ofertę w formacie PDF, XLSX lub XLS.</p>
+          <p class="author-line"><span class="author-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M6.5 19c.4-3.4 2.2-5.2 5.5-5.2s5.1 1.8 5.5 5.2"/></svg></span><span>Projekt i wykonanie: <strong>Jacek Maniak</strong><br>Technologie: HTML, CSS, JavaScript, Node.js, Cloudflare Workers, SheetJS i OpenAI Codex</span></p>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <svg viewBox="0 0 680 380" role="img">
+            <defs>
+              <linearGradient id="xml-sheet" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#f7f8ff"/></linearGradient>
+              <linearGradient id="xml-label" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7669df"/><stop offset="1" stop-color="#372aac"/></linearGradient>
+              <radialGradient id="shield-halo"><stop stop-color="#ddd9ff" stop-opacity=".62"/><stop offset="1" stop-color="#eef4ff" stop-opacity="0"/></radialGradient>
+              <filter id="soft-shadow"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#372aac" flood-opacity=".08"/></filter>
+            </defs>
+            <path class="flow-line" d="M238 105c72 0 72 45 132 45"/><path class="flow-line flow-light" d="M238 190h132"/><path class="flow-line" d="M238 275c72 0 72-45 132-45"/>
+            <g filter="url(#soft-shadow)"><path class="xml-document" d="M34 28h158l46 46v278H34z"/><path class="fold" d="M192 28v46h46"/></g>
+            <rect x="34" y="62" width="92" height="46" rx="5" fill="url(#xml-label)"/><text x="80" y="93" text-anchor="middle" class="svg-label svg-label-light">XML</text>
+            <text x="60" y="148" class="svg-code">&lt;product&gt;</text><text x="72" y="181" class="svg-code">&lt;name&gt;Adapter&lt;/name&gt;</text><text x="72" y="214" class="svg-code">&lt;price&gt;29.90&lt;/price&gt;</text><text x="72" y="247" class="svg-code">&lt;stock&gt;120&lt;/stock&gt;</text><text x="60" y="292" class="svg-code">&lt;/product&gt;</text>
+            <circle cx="410" cy="190" r="105" fill="url(#shield-halo)"/>
+            <g filter="url(#soft-shadow)"><path class="hero-shield" d="M410 105c19 14 38 21 58 24v60c0 49-23 79-58 96-35-17-58-47-58-96v-60c20-3 39-10 58-24Z"/><path class="hero-check" d="m381 192 21 24 40-58"/></g>
+            <path class="output-line" d="M468 150h82"/><path class="output-line" d="M468 190h82"/><path class="output-line" d="M468 230h82"/><path class="output-arrow" d="m544 144 7 6-7 6m0 28 7 6-7 6m0 28 7 6-7 6"/>
+            <g class="output-card" transform="translate(568 39)"><path d="M0 0h63l25 25v77H0z"/><path class="output-fold" d="M63 0v25h25"/><rect x="0" y="29" width="48" height="27" rx="3" fill="#df4961"/><text x="24" y="48" text-anchor="middle" class="svg-label-small">PDF</text></g>
+            <g class="output-card" transform="translate(568 139)"><path d="M0 0h63l25 25v77H0z"/><path class="output-fold" d="M63 0v25h25"/><rect x="0" y="29" width="55" height="27" rx="3" fill="#2d9a65"/><text x="27" y="48" text-anchor="middle" class="svg-label-small">XLSX</text></g>
+            <g class="output-card" transform="translate(568 239)"><path d="M0 0h63l25 25v77H0z"/><path class="output-fold" d="M63 0v25h25"/><rect x="0" y="29" width="45" height="27" rx="3" fill="#238153"/><text x="22" y="48" text-anchor="middle" class="svg-label-small">XLS</text></g>
+          </svg>
+        </div>
       </header>
       <section class="panel source-panel">
         <div class="section-heading">
-          <div><p class="eyebrow">Źródło danych</p><h2>Adres pliku XML</h2></div>
+          <div><p class="eyebrow">Zacznij tutaj</p><h2>Adres pliku XML</h2></div>
           <span id="source-status" class="status">Nie wczytano danych</span>
         </div>
         <div class="source-form">
@@ -26,8 +49,56 @@
             <input id="xml-url" type="url" placeholder="https://example.com/oferta.xml" autocomplete="off">
             <button id="load-button" class="button button-load" type="button"><span>Pobierz XML</span><span class="button-icon" aria-hidden="true">→</span></button>
           </div>
-          <p class="hint">Możesz użyć adresu domyślnego albo podać własny feed XML.</p>
+          <p class="hint">Możesz użyć adresu domyślnego albo wkleić bezpośredni adres do własnego pliku XML.</p>
         </div>
+      </section>
+      <section id="welcome-guide" class="welcome-guide" aria-label="Jak działa Generator XML">
+        <ol class="steps-panel" aria-label="Trzy kroki tworzenia oferty">
+          <li class="step-item"><span class="step-icon" aria-hidden="true">↗</span><span><strong>1. Wklej adres XML</strong><small>Podaj bezpośredni adres do pliku dostępnego w internecie.</small></span></li>
+          <li class="step-item"><span class="step-icon step-sliders" aria-hidden="true">≡</span><span><strong>2. Wybierz i filtruj produkty</strong><small>Wyszukaj produkty i wybierz potrzebne dane.</small></span></li>
+          <li class="step-item"><span class="step-icon" aria-hidden="true">↓</span><span><strong>3. Pobierz gotową ofertę</strong><small>Zapisz wynik jako PDF, XLSX lub XLS.</small></span></li>
+        </ol>
+
+        <div class="welcome-grid">
+          <article class="xml-explainer">
+            <div class="info-icon" aria-hidden="true">&lt;/&gt;</div>
+            <div>
+              <p class="eyebrow">Podstawy</p>
+              <h2>Czym jest plik XML?</h2>
+              <p>XML to uporządkowany plik tekstowy służący do przechowywania i wymiany danych między systemami. Może zawierać różne informacje, np. produkty, ceny, zamówienia, dokumenty lub ustawienia. Ten generator pracuje z plikami XML zawierającymi oferty produktowe.</p>
+              <pre class="xml-sample" aria-label="Przykładowy fragment pliku XML"><code>&lt;name&gt;Adapter USB&lt;/name&gt;
+&lt;price&gt;29.90&lt;/price&gt;</code></pre>
+            </div>
+          </article>
+
+          <aside class="tips-card" aria-labelledby="tips-title">
+            <div class="tips-topline"><span id="tips-title">Warto wiedzieć</span><span id="tip-counter">Porada 1/3</span></div>
+            <p id="tip-text" class="tip-text" aria-live="polite">Użyj bezpośredniego adresu do pliku .xml. Link powinien zaczynać się od http:// lub https://.</p>
+            <div class="tips-controls">
+              <button id="tip-prev" class="tip-arrow" type="button" aria-label="Poprzednia porada">←</button>
+              <div id="tip-dots" class="tip-dots" aria-hidden="true"><span class="active"></span><span></span><span></span></div>
+              <button id="tip-next" class="tip-arrow" type="button" aria-label="Następna porada">→</button>
+            </div>
+          </aside>
+        </div>
+
+        <section class="security-panel" aria-labelledby="security-title">
+          <div class="security-heading">
+            <span class="shield-icon" aria-hidden="true">
+              <svg viewBox="0 0 64 76"><path d="M32 3c9 7 18 10 27 11v19c0 20-10 33-27 40C15 66 5 53 5 33V14C14 13 23 10 32 3Z"/><path d="m19 38 9 9 18-23"/></svg>
+            </span>
+            <div><p class="eyebrow">Ochrona danych</p><h2 id="security-title">Bezpieczne przetwarzanie</h2></div>
+          </div>
+          <ul class="security-list">
+            <li><span class="security-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span><span>Obsługa źródeł HTTP i HTTPS</span></li>
+            <li><span class="security-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 4 6 4 9s-1 6-4 9c-3-3-4-6-4-9s1-6 4-9Z"/></svg></span><span>Blokada localhost i jawnych prywatnych adresów IP</span></li>
+            <li><span class="security-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 7h12m0 0-3-3m3 3-3 3M17 17H5m0 0 3-3m-3 3 3 3"/></svg></span><span>Maksymalnie 3 kontrolowane przekierowania adresu pliku XML</span></li>
+            <li><span class="security-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l4 4v8M15 3v5h5M5 8v12h9"/><path d="m10 15 2 2 5-6"/></svg></span><span>Weryfikacja celu każdego przekierowania adresu pliku XML</span></li>
+            <li><span class="security-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m4 16 12-12 4 4L8 20l-4-4Z"/><path d="m13 7 4 4M10 10l2 2M7 13l2 2"/></svg></span><span>Kontrola deklarowanego rozmiaru pliku do 50 MB</span></li>
+            <li><span class="security-feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m5.6 18.4 12.8-12.8"/></svg></span><span>Bez trwałego zapisywania oferty</span></li>
+          </ul>
+        </section>
+        <p class="welcome-footer">Narzędzie przygotowane do sprawnego tworzenia ofert produktowych z feedów XML.</p>
       </section>
       <section id="results" class="hidden">
         <div class="stats-grid">
@@ -41,21 +112,20 @@
             <div><p class="eyebrow">Podgląd</p><h2>Produkty w ofercie</h2></div>
             <fieldset class="export-actions">
               <legend>Eksport danych</legend>
-              <label class="export-option"><input id="include-image-urls" type="checkbox" checked> Dołącz URL-e zdjęć</label>
+              <label class="export-option"><input id="include-image-urls" type="checkbox" checked> Dołącz linki do zdjęć</label>
               <div class="export-button-group" role="group" aria-label="Format eksportu">
-                <button id="csv-button" class="button button-export" type="button"><span>CSV</span><span class="format-mark" aria-hidden="true">.csv</span></button>
                 <button id="xlsx-button" class="button button-export" type="button"><span>XLSX</span><span class="format-mark" aria-hidden="true">.xlsx</span></button>
                 <button id="xls-button" class="button button-export" type="button"><span>XLS</span><span class="format-mark" aria-hidden="true">.xls</span></button>
-                <button id="google-sheets-button" class="button button-export button-google" type="button"><span>Google</span><span class="format-mark" aria-hidden="true">Sheets</span></button>
+                <button id="pdf-button" class="button button-export" type="button"><span>PDF</span><span class="format-mark" aria-hidden="true">drukuj</span></button>
               </div>
             </fieldset>
           </div>
           <div class="filters">
-            <label>Wyszukaj <input id="search" type="search" placeholder="nazwa, kod produktu, EAN, MPN..."></label>
+            <label>Wyszukaj <input id="search" type="search" placeholder="np. EAN, nazwa produktu — oddziel frazy przecinkami"></label>
             <div class="filter-builder">
               <label>Znacznik XML <select id="filter-field"><option value="">Najpierw wczytaj XML</option></select></label>
-              <button id="add-filter-button" type="button" class="button button-filter-add"><span aria-hidden="true">＋</span> Dodaj filtr</button>
-              <button id="clear-filters-button" type="button" class="button button-text quiet">Wyczyść filtry <span aria-hidden="true">↗</span></button>
+              <button id="add-filter-button" type="button" class="button button-filter-add" disabled title="Najpierw wybierz znacznik XML"><span aria-hidden="true">＋</span><span data-add-filter-label>Wybierz znacznik</span></button>
+              <button id="clear-filters-button" type="button" class="button button-clear-filters" disabled title="Brak aktywnych filtrów"><span class="clear-filter-icon" aria-hidden="true">×</span><span>Wyczyść filtry</span></button>
             </div>
           </div>
           <div id="active-filters" class="active-filters" aria-live="polite"></div>
@@ -65,6 +135,6 @@
         </section>
       </section>
     </main>
-    <script type="module" src="/app.js?v=20260806-1"></script>
+    <script type="module" src="/app.js?v=20260807-4"></script>
   </body>
 </html>
