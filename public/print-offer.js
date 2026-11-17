@@ -26,8 +26,7 @@ function productRows(products, publicAppUrl) {
     const nameCell = demoUrl ? `<a href="${escapeHtml(demoUrl)}" target="_blank" rel="noopener">${name} <span aria-hidden="true">&#8599;</span></a>` : name;
     return `<tr>
       <td class="image-cell">${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="">` : '<span class="no-image">brak</span>'}</td>
-      <td>${escapeHtml(product.id)}</td>
-      <td>${escapeHtml(product.attributes?.['Kod Produktu'])}</td>
+      <td>${escapeHtml(product.attributes?.MPN)}</td>
       <td class="name-cell">${nameCell}</td>
       <td>${escapeHtml(product.category)}</td>
       <td class="numeric">${escapeHtml(product.price)}</td>
@@ -64,7 +63,7 @@ export function buildPrintOfferHtml({ products, publicAppUrl, sourceUrl = '', ge
     th { padding: 9px 8px; color: #514d59; background: #f4f3f8; font-size: 8px; text-align: left; text-transform: uppercase; letter-spacing: .06em; }
     td { padding: 8px; border-top: 1px solid rgba(9,9,11,.08); vertical-align: middle; overflow-wrap: anywhere; }
     tr { break-inside: avoid; page-break-inside: avoid; }
-    th:nth-child(1) { width: 11mm; } th:nth-child(2) { width: 10mm; } th:nth-child(3) { width: 22mm; } th:nth-child(5) { width: 27mm; } th:nth-child(6) { width: 15mm; } th:nth-child(7) { width: 10mm; } th:nth-child(8) { width: 25mm; }
+    th:nth-child(1) { width: 11mm; } th:nth-child(2) { width: 28mm; } th:nth-child(4) { width: 27mm; } th:nth-child(5) { width: 15mm; } th:nth-child(6) { width: 10mm; } th:nth-child(7) { width: 25mm; }
     .image-cell { text-align: center; }
     .image-cell img { width: 38px; height: 38px; object-fit: contain; border-radius: 7px; background: #f2f1fa; }
     .no-image { color: #77717f; font-size: 8px; }
@@ -104,7 +103,7 @@ export function buildPrintOfferHtml({ products, publicAppUrl, sourceUrl = '', ge
     <p class="cookie-note"><strong>Informacja:</strong> Kliknięcie nazwy produktu powoduje przejście do serwisu b2b.netinet.pl i automatyczne zalogowanie na publiczne konto demonstracyjne. Serwis Netinet może zapisać niezbędny plik cookie służący do utrzymania sesji użytkownika.</p>
     <section class="panel">
       <table>
-        <thead><tr><th>Zdjęcie</th><th>ID</th><th>Kod produktu</th><th>Nazwa</th><th>Kategoria</th><th>Cena</th><th>Stan</th><th>EAN</th></tr></thead>
+        <thead><tr><th>Zdjęcie</th><th>Part Number</th><th>Nazwa</th><th>Kategoria</th><th>Cena</th><th>Stan</th><th>EAN</th></tr></thead>
         <tbody>${productRows(products, publicAppUrl)}</tbody>
       </table>
     </section>
